@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Calls from "./pages/Calls";
 import Contacts from "./pages/Contacts";
 import Settings from "./pages/Settings";
+import BitrixCallback from "./pages/BitrixCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ function ProtectedApp() {
         <Route path="/calls" element={<Calls />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/bitrix/callback" element={<BitrixCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
