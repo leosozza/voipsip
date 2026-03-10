@@ -43,7 +43,7 @@ export default function Contacts() {
 
   const onSubmit = async (data: ContactForm) => {
     try {
-      await addContact.mutateAsync(data);
+      await addContact.mutateAsync(data as { name: string; phone: string; email?: string; company_name?: string; notes?: string });
       toast({ title: 'Contato adicionado!' });
       reset();
       setIsDialogOpen(false);
