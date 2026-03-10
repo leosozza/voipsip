@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface BitrixCredentials {
@@ -26,7 +26,6 @@ async function refreshBitrixToken(
     throw new Error("BITRIX_CLIENT_ID ou BITRIX_CLIENT_SECRET não configurados");
   }
 
-  // Check if token is still valid
   if (creds.access_token && creds.expires_at) {
     const expiresAt = new Date(creds.expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
@@ -105,24 +104,38 @@ Deno.serve(async (req) => {
 
     const token = await refreshBitrixToken(creds as BitrixCredentials, supabase);
 
+    // === ACTION: register ===
     if (action === "register") {
-      // telephony.externalcall.register
-      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.register", {
+      const params: Record<string, any> = {
         USER_ID: call_data.user_id || 1,
         PHONE_NUMBER: call_data.phone_number,
         TYPE: call_data.direction === "outbound" ? 1 : 2,
         SHOW: call_data.show !== undefined ? call_data.show : 0,
-        LINE_NUMBER: call_data.line_number || "",
         CRM_CREATE: call_data.crm_create !== undefined ? call_data.crm_create : 1,
-      });
+      };
+
+      if (call_data.line_number) {
+        params.LINE_NUMBER = call_data.line_number;
+      }
+      if (call_data.call_start_date) {
+        params.CALL_START_DATE = call_data.call_start_date;
+      }
+      if (call_data.user_phone_inner) {
+        params.USER_PHONE_INNER = call_data.user_phone_inner;
+      }
+      if (call_data.crm_source) {
+        params.CRM_SOURCE = call_data.crm_source;
+      }
+
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.register", params);
 
       return new Response(JSON.stringify({ success: true, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // === ACTION: finish (sem RECORD_URL - deprecated) ===
     if (action === "finish") {
-      // telephony.externalcall.finish
       const params: Record<string, any> = {
         CALL_ID: call_data.call_id,
         USER_ID: call_data.user_id || 1,
@@ -130,8 +143,9 @@ Deno.serve(async (req) => {
         STATUS_CODE: call_data.status_code || 200,
       };
 
-      if (call_data.recording_url) {
-        params.RECORD_URL = call_data.recording_url;
+      if (call_data.cost) {
+        params.COST = call_data.cost;
+        params.COST_CURRENCY = call_data.cost_currency || "BRL";
       }
 
       const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.finish", params);
@@ -141,16 +155,56 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === ACTION: attach_record (substitui RECORD_URL deprecated no finish) ===
+    if (action === "attach_record") {
+      const params: Record<string, any> = {
+        CALL_ID: call_data.call_id,
+        FILENAME: call_data.filename || "recording.mp3",
+      };
+
+      if (call_data.recording_url) {
+        params.RECORD_URL = call_data.recording_url;
+      } else if (call_data.file_content) {
+        params.FILE_CONTENT = call_data.file_content;
+      } else {
+        return new Response(
+          JSON.stringify({ error: "recording_url ou file_content é obrigatório" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalCall.attachRecord", params);
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: register_and_finish (fluxo completo com attachRecord) ===
     if (action === "register_and_finish") {
-      // Full flow: register then finish
-      const registerResult = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.register", {
+      // 1. Register
+      const registerParams: Record<string, any> = {
         USER_ID: call_data.user_id || 1,
         PHONE_NUMBER: call_data.phone_number,
         TYPE: call_data.direction === "outbound" ? 1 : 2,
         SHOW: 0,
-        LINE_NUMBER: call_data.line_number || "",
         CRM_CREATE: call_data.crm_create !== undefined ? call_data.crm_create : 1,
-      });
+      };
+
+      if (call_data.line_number) {
+        registerParams.LINE_NUMBER = call_data.line_number;
+      }
+      if (call_data.call_start_date) {
+        registerParams.CALL_START_DATE = call_data.call_start_date;
+      }
+      if (call_data.user_phone_inner) {
+        registerParams.USER_PHONE_INNER = call_data.user_phone_inner;
+      }
+      if (call_data.crm_source) {
+        registerParams.CRM_SOURCE = call_data.crm_source;
+      }
+
+      const registerResult = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.register", registerParams);
 
       const callId = registerResult?.result?.CALL_ID;
       if (!callId) {
@@ -160,6 +214,7 @@ Deno.serve(async (req) => {
         );
       }
 
+      // 2. Finish (sem RECORD_URL)
       const finishParams: Record<string, any> = {
         CALL_ID: callId,
         USER_ID: call_data.user_id || 1,
@@ -167,20 +222,142 @@ Deno.serve(async (req) => {
         STATUS_CODE: call_data.status_code || 200,
       };
 
-      if (call_data.recording_url) {
-        finishParams.RECORD_URL = call_data.recording_url;
-      }
-
       const finishResult = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.finish", finishParams);
 
+      // 3. Attach recording (se houver URL de gravação)
+      let attachResult = null;
+      if (call_data.recording_url) {
+        attachResult = await bitrixApi(creds.bitrix_domain, token, "telephony.externalCall.attachRecord", {
+          CALL_ID: callId,
+          FILENAME: call_data.filename || "recording.mp3",
+          RECORD_URL: call_data.recording_url,
+        });
+      }
+
       return new Response(
-        JSON.stringify({ success: true, register: registerResult, finish: finishResult }),
+        JSON.stringify({ success: true, register: registerResult, finish: finishResult, attach: attachResult }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // === ACTION: add_external_line ===
+    if (action === "add_external_line") {
+      const params: Record<string, any> = {
+        NUMBER: call_data.number,
+      };
+      if (call_data.name) {
+        params.NAME = call_data.name;
+      }
+      if (call_data.crm_auto_create !== undefined) {
+        params.CRM_AUTO_CREATE = call_data.crm_auto_create;
+      }
+
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalLine.add", params);
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: delete_external_line ===
+    if (action === "delete_external_line") {
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalLine.delete", {
+        NUMBER: call_data.number,
+      });
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: get_external_lines ===
+    if (action === "get_external_lines") {
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalLine.get", {});
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: search_crm ===
+    if (action === "search_crm") {
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalCall.searchCrmEntities", {
+        PHONE_NUMBER: call_data.phone_number,
+      });
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: bind_events ===
+    if (action === "bind_events") {
+      const supabaseProjectUrl = Deno.env.get("SUPABASE_URL")!;
+      const handlerUrl = `${supabaseProjectUrl}/functions/v1/bitrix-events?company_id=${company_id}`;
+
+      const events = [
+        "OnExternalCallStart",
+        "OnExternalCallBackStart",
+      ];
+
+      const results: Record<string, any> = {};
+      for (const event of events) {
+        results[event] = await bitrixApi(creds.bitrix_domain, token, "event.bind", {
+          event,
+          handler: handlerUrl,
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, results, handler_url: handlerUrl }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: unbind_events ===
+    if (action === "unbind_events") {
+      const supabaseProjectUrl = Deno.env.get("SUPABASE_URL")!;
+      const handlerUrl = `${supabaseProjectUrl}/functions/v1/bitrix-events?company_id=${company_id}`;
+
+      const events = ["OnExternalCallStart", "OnExternalCallBackStart"];
+      const results: Record<string, any> = {};
+      for (const event of events) {
+        results[event] = await bitrixApi(creds.bitrix_domain, token, "event.unbind", {
+          event,
+          handler: handlerUrl,
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: show_call_card ===
+    if (action === "show_call_card") {
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.show", {
+        CALL_ID: call_data.call_id,
+        USER_ID: call_data.user_id || 1,
+      });
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: hide_call_card ===
+    if (action === "hide_call_card") {
+      const result = await bitrixApi(creds.bitrix_domain, token, "telephony.externalcall.hide", {
+        CALL_ID: call_data.call_id,
+        USER_ID: call_data.user_id || 1,
+      });
+
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: test ===
     if (action === "test") {
-      // Test connection by calling a simple method
       const result = await bitrixApi(creds.bitrix_domain, token, "app.info", {});
       return new Response(JSON.stringify({ success: true, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -188,7 +365,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Ação inválida. Use: register, finish, register_and_finish, test" }),
+      JSON.stringify({ error: "Ação inválida. Use: register, finish, attach_record, register_and_finish, add_external_line, delete_external_line, get_external_lines, search_crm, bind_events, unbind_events, show_call_card, hide_call_card, test" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
