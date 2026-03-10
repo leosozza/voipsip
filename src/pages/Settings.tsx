@@ -6,6 +6,7 @@ import { Plus, Trash2, Server, Building2, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
+import { BitrixSettings } from '@/components/settings/BitrixSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
