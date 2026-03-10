@@ -55,6 +55,59 @@ export type Database = {
           },
         ]
       }
+      bitrix_events: {
+        Row: {
+          bitrix_user_id: string | null
+          call_id: string | null
+          company_id: string
+          created_at: string
+          crm_entity_id: string | null
+          crm_entity_type: string | null
+          event_type: string
+          id: string
+          phone_number: string | null
+          processed_at: string | null
+          raw_data: Json | null
+          status: string
+        }
+        Insert: {
+          bitrix_user_id?: string | null
+          call_id?: string | null
+          company_id: string
+          created_at?: string
+          crm_entity_id?: string | null
+          crm_entity_type?: string | null
+          event_type: string
+          id?: string
+          phone_number?: string | null
+          processed_at?: string | null
+          raw_data?: Json | null
+          status?: string
+        }
+        Update: {
+          bitrix_user_id?: string | null
+          call_id?: string | null
+          company_id?: string
+          created_at?: string
+          crm_entity_id?: string | null
+          crm_entity_type?: string | null
+          event_type?: string
+          id?: string
+          phone_number?: string | null
+          processed_at?: string | null
+          raw_data?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bitrix_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           call_ended_at: string | null
