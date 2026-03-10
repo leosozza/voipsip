@@ -213,6 +213,8 @@ export default function Settings() {
             )}
           </CardContent>
         </Card>
+        {/* Bitrix24 Integration */}
+        <BitrixSettings companyId={currentCompany.id} />
       </div>
     </AppLayout>
   );
