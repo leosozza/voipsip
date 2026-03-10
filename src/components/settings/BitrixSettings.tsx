@@ -35,10 +35,12 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
     credentials, isLoading, isConnected, isExpired,
     saveBitrixCredentials, deleteBitrixCredentials, testConnection,
     getExternalLines, addExternalLine, deleteExternalLine,
-    bindEvents, unbindEvents,
+    bindEvents, unbindEvents, linkInstallation,
   } = useBitrixCredentials(companyId);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [showLineForm, setShowLineForm] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [linkDomain, setLinkDomain] = useState('');
   const [externalLines, setExternalLines] = useState<any[]>([]);
   const [linesLoaded, setLinesLoaded] = useState(false);
   const [eventsBound, setEventsBound] = useState(false);
