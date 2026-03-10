@@ -10,6 +10,8 @@ import Calls from "./pages/Calls";
 import Contacts from "./pages/Contacts";
 import Settings from "./pages/Settings";
 import BitrixCallback from "./pages/BitrixCallback";
+import BitrixApp from "./pages/BitrixApp";
+import BitrixSettingsPage from "./pages/BitrixSettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
