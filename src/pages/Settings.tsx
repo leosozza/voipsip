@@ -34,7 +34,7 @@ const companySchema = z.object({
 
 export default function Settings() {
   const { currentCompany, createCompany } = useCompany();
-  const { sipAccounts, isLoading, addSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
+  const { sipAccounts, isLoading, addSipAccount, updateSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
   const [showSipForm, setShowSipForm] = useState(false);
   const { toast } = useToast();
 
