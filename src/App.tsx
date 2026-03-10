@@ -5,9 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { Softphone } from "@/components/softphone/Softphone";
-import { useSipAccounts } from "@/hooks/useSipAccounts";
-import { useCompany } from "@/hooks/useCompany";
 import Dashboard from "./pages/Dashboard";
 import Calls from "./pages/Calls";
 import Contacts from "./pages/Contacts";
@@ -17,23 +14,17 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { currentCompany } = useCompany();
-  const { defaultAccount } = useSipAccounts(currentCompany?.id);
-
   return (
-    <>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/calls" element={<Calls />} />
-          <Route path="/contacts" element={<Contacts />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <Softphone sipAccount={defaultAccount} />
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/calls" element={<Calls />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

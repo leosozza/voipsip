@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react';
+import { ClickToCall } from '@/components/calls/ClickToCall';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useContacts } from '@/hooks/useContacts';
@@ -143,7 +144,12 @@ export default function Contacts() {
                 {filteredContacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell className="font-medium">{contact.name}</TableCell>
-                    <TableCell className="font-mono">{contact.phone}</TableCell>
+                    <TableCell className="font-mono">
+                      <div className="flex items-center gap-1">
+                        {contact.phone}
+                        <ClickToCall phoneNumber={contact.phone} />
+                      </div>
+                    </TableCell>
                     <TableCell>{contact.email || '-'}</TableCell>
                     <TableCell>{contact.company_name || '-'}</TableCell>
                     <TableCell>

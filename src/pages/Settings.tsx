@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Server, Building2, Check } from 'lucide-react';
+import { Plus, Trash2, Server, Building2, Check, Star } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
@@ -34,7 +34,7 @@ const companySchema = z.object({
 
 export default function Settings() {
   const { currentCompany, createCompany } = useCompany();
-  const { sipAccounts, isLoading, addSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
+  const { sipAccounts, isLoading, addSipAccount, updateSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
   const [showSipForm, setShowSipForm] = useState(false);
   const { toast } = useToast();
 
@@ -72,6 +72,21 @@ export default function Settings() {
     try {
       await deleteSipAccount.mutateAsync(id);
       toast({ title: 'Conta SIP removida' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      // Remove default from all, then set on selected
+      for (const acc of sipAccounts) {
+        if (acc.is_default && acc.id !== id) {
+          await updateSipAccount.mutateAsync({ id: acc.id, is_default: false });
+        }
+      }
+      await updateSipAccount.mutateAsync({ id, is_default: true });
+      toast({ title: 'Conta padrão atualizada' });
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     }
@@ -204,9 +219,21 @@ export default function Settings() {
                         {account.sip_username}@{account.sip_server}:{account.ws_port} ({account.transport})
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteSip(account.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {!account.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSetDefault(account.id)}
+                          title="Definir como padrão"
+                        >
+                          <Star className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteSip(account.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
