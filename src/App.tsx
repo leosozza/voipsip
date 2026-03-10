@@ -38,6 +38,22 @@ function ProtectedApp() {
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
 
+  // Check if current path is a Bitrix iframe route (no auth required)
+  const isBitrixRoute = window.location.pathname.startsWith('/bitrix/');
+
+  if (isBitrixRoute) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/bitrix/app" element={<BitrixApp />} />
+          <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
+          <Route path="/bitrix/callback" element={<BitrixCallback />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
