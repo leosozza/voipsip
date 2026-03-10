@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react';
+import { ClickToCall } from '@/components/calls/ClickToCall';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useContacts } from '@/hooks/useContacts';
