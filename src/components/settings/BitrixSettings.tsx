@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,23 +38,27 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
     form.setValue('bitrix_domain', credentials.bitrix_domain);
   }
 
-  const startOAuth = (data: DomainForm) => {
+  const startOAuth = async (data: DomainForm) => {
     const domain = data.bitrix_domain;
-    const clientId = import.meta.env.VITE_BITRIX_CLIENT_ID;
 
-    if (!clientId) {
-      toast({ title: 'Erro', description: 'BITRIX_CLIENT_ID não configurado. Entre em contato com o administrador.', variant: 'destructive' });
-      return;
+    try {
+      const { data: result, error } = await supabase.functions.invoke('bitrix-client-id');
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+
+      const clientId = result.client_id;
+
+      // Save context for callback
+      localStorage.setItem('bitrix_oauth_domain', domain);
+      localStorage.setItem('bitrix_oauth_company_id', companyId);
+
+      const redirectUri = `${window.location.origin}/bitrix/callback`;
+      const authUrl = `https://${domain}/oauth/authorize/?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+      window.location.href = authUrl;
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message || 'Não foi possível obter o Client ID.', variant: 'destructive' });
     }
-
-    // Save context for callback
-    localStorage.setItem('bitrix_oauth_domain', domain);
-    localStorage.setItem('bitrix_oauth_company_id', companyId);
-
-    const redirectUri = `${window.location.origin}/bitrix/callback`;
-    const authUrl = `https://${domain}/oauth/authorize/?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    window.location.href = authUrl;
   };
 
   const onTest = async () => {
