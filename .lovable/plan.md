@@ -1,59 +1,130 @@
 
-# Plano: Reenviar telephony.externalcall.finish para Deal 134
 
-## Diagnóstico
+# Analise: Conformidade com Requisitos Bitrix24 Telephony
 
-O `telephony.externalcall.finish` falhou porque o **access_token do Bitrix24 expirou em 2 de fevereiro de 2026**. A chamada ocorreu em 18 de fevereiro, logo todas as chamadas à API do Bitrix24 falharam silenciosamente.
+## Requisitos Obrigatórios do Marketplace (5 itens)
 
-**Dados da chamada:**
-- Bitrix Call ID: `externalCall.d58222b22d4e11e3d273c9b174a08d9e.1771443560`
-- Bitrix User ID: `1`
-- Duração: 180 segundos
-- Status: completed (code 200)
-- Gravação: `https://listener.api4com.com/files/listen/a6f1f205-1232-4705-a53f-599e3241826d.mp3`
-- Endpoint: `https://thoth24.bitrix24.com.br/rest/`
+Baseado na documentação oficial em `requirements-telephony.html`:
 
-## O que será feito
+### 1. Register de chamadas (entrada/saída) -- PARCIAL
+**Status:** Implementado parcialmente
 
-### 1. Criar Edge Function `retry-call-finish`
+O `bitrix-sync` já chama `telephony.externalcall.register`, mas com problemas:
+- Usa `RECORD_URL` no `finish` (parâmetro **deprecated** segundo a documentação)
+- Falta passar `CALL_START_DATE` em formato ISO 8601 com timezone
+- Falta suporte a `USER_PHONE_INNER` (ramal interno) como alternativa ao `USER_ID`
+- Falta suporte a `CRM_SOURCE` para identificar a origem
 
-Uma função que:
-1. Renova o token OAuth usando o `refresh_token` existente (via `https://oauth.bitrix.info/oauth/token/`)
-2. Salva o novo token no banco de dados
-3. Envia `telephony.externalcall.finish` com os dados da chamada e a URL da gravação
-4. Retorna o resultado da operação
+### 2. LINE_NUMBER obrigatório para Sales Intelligence -- PARCIAL
+**Status:** Implementado parcialmente
 
-A function será chamada via POST com o `company_id` no body, e os dados da chamada estarão hardcoded para esta operação específica.
+O campo `LINE_NUMBER` é passado mas como string vazia por padrão. Para conformidade com Sales Intelligence, é necessário:
+- Registrar linhas externas no Bitrix24 via `telephony.externalLine.add`
+- Sempre enviar o número da linha real nas chamadas de entrada
+- Criar uma action `add_external_line` no `bitrix-sync` para registrar linhas
 
-### 2. Configuração
+### 3. Gravação via `telephony.externalCall.attachRecord` -- NAO IMPLEMENTADO
+**Status:** Faltando
 
-Adicionar ao `supabase/config.toml`:
-```toml
-[functions.retry-call-finish]
-verify_jwt = false
-```
+A documentação do Bitrix24 diz explicitamente que `RECORD_URL` no `finish` é **deprecated**. O método correto é:
+1. Chamar `telephony.externalcall.finish` SEM gravação
+2. Depois chamar `telephony.externalCall.attachRecord` com `CALL_ID`, `FILENAME` e `RECORD_URL` ou `FILE_CONTENT` (base64)
 
-### 3. Executar e Testar
+O código atual usa `RECORD_URL` no `finish`, que pode falhar silenciosamente.
 
-Após deploy, chamar a function para reenviar o finish e verificar se a gravação foi vinculada ao deal no Bitrix24.
+### 4. Click-to-Call via evento `OnExternalCallStart` -- NAO IMPLEMENTADO
+**Status:** Faltando
+
+O Bitrix24 exige um handler para o evento `OnExternalCallStart`. Quando o usuário clica para ligar no CRM do Bitrix24, o evento é disparado e a integração deve:
+- Receber o webhook com número e user_id
+- Iniciar a chamada no softphone/PBX
+- Não precisa chamar `register` novamente (já está registrado)
+
+Necessário:
+- Criar um endpoint/edge function para receber o webhook `OnExternalCallStart`
+- Registrar o handler no Bitrix24 via `event.bind`
+
+### 5. Callback CRM via evento `OnExternalCallBackStart` -- NAO IMPLEMENTADO
+**Status:** Faltando
+
+Quando um visitante preenche o formulário de callback do CRM, o Bitrix24 dispara `OnExternalCallBackStart`. A integração deve:
+- Receber o webhook com `PHONE_NUMBER`, `TEXT`, `VOICE`, `CRM_ENTITY_TYPE/ID`
+- Iniciar uma chamada de callback para o número informado
+
+Necessário:
+- Criar endpoint para receber o webhook
+- Registrar o handler via `event.bind`
+
+---
+
+## Cenários Recomendados (não obrigatórios, mas valorizados)
+
+### 6. Busca CRM + encaminhamento ao responsável -- NAO IMPLEMENTADO
+- Usar `telephony.externalCall.searchCrmEntities` em chamadas de entrada para encontrar o cliente e redirecionar ao responsável
+
+### 7. Show/Hide do call card -- NAO IMPLEMENTADO
+- Usar `telephony.externalcall.show` e `telephony.externalcall.hide` durante transferências
+
+---
+
+## Plano de Implementação
+
+### Fase 1: Corrigir o que existe (bitrix-sync)
+1. **Substituir `RECORD_URL` no finish** por chamada separada `telephony.externalCall.attachRecord`
+   - Adicionar action `attach_record` no `bitrix-sync`
+   - Alterar `register_and_finish` para chamar `attachRecord` após `finish`
+2. **Adicionar `CALL_START_DATE`** no register com timezone
+3. **Adicionar action `add_external_line`** para registrar linhas via `telephony.externalLine.add`
+4. **Adicionar action `search_crm`** para buscar entidades CRM por telefone
+
+### Fase 2: Eventos obrigatórios (novos endpoints)
+5. **Criar edge function `bitrix-events`** para receber webhooks do Bitrix24:
+   - Handler para `OnExternalCallStart` (click-to-call do CRM)
+   - Handler para `OnExternalCallBackStart` (callback de formulário)
+6. **Criar action `bind_events`** no `bitrix-sync` para registrar os handlers via `event.bind`
+
+### Fase 3: UI e integração
+7. **Atualizar Settings** para mostrar status de linhas externas registradas
+8. **Adicionar botão** para registrar linhas externas no Bitrix24
+9. **Adicionar botão** para registrar event handlers (bind)
 
 ---
 
 ## Detalhes Técnicos
 
-**Fluxo da function:**
+### attachRecord (substituindo RECORD_URL deprecated)
 
 ```text
-1. Buscar credenciais Bitrix24 (company_id: 82e09b93...)
-2. Renovar OAuth token via oauth.bitrix.info
-3. Salvar novo token no banco
-4. POST telephony.externalcall.finish com:
-   - CALL_ID: externalCall.d58222b2...
-   - USER_ID: 1
-   - DURATION: 180
-   - STATUS_CODE: 200
-   - RECORD_URL: https://listener.api4com.com/files/listen/a6f1f205...mp3
-5. Retornar resultado
+Fluxo correto:
+1. telephony.externalcall.register → CALL_ID
+2. telephony.externalcall.finish (sem RECORD_URL)
+3. telephony.externalCall.attachRecord com:
+   - CALL_ID
+   - FILENAME: "recording.mp3"
+   - RECORD_URL: url da gravação
 ```
 
-**Problema raiz a resolver depois:** O `api4com-webhook` não faz refresh de token antes de chamar o Bitrix24. Isso deve ser corrigido para evitar falhas futuras.
+### bitrix-events endpoint
+
+```text
+POST /functions/v1/bitrix-events
+Body (do Bitrix24):
+  event: "ONEXTERNALCALLSTART" | "ONEXTERNALCALLBACKSTART"
+  data[PHONE_NUMBER]: "..."
+  data[USER_ID]: "..."
+  ...
+
+Ação:
+  - Salvar evento pendente no banco ou notificar via realtime
+  - Retornar 200 OK
+```
+
+### event.bind (registrar handlers)
+
+```text
+bitrix API: event.bind
+Params:
+  event: "OnExternalCallStart"
+  handler: "https://<project-id>.supabase.co/functions/v1/bitrix-events"
+```
+
