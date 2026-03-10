@@ -69,7 +69,12 @@ export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
             return (
               <TableRow key={log.id}>
                 <TableCell><DirectionIcon className={`h-4 w-4 ${directionColor}`} /></TableCell>
-                <TableCell className="font-mono">{log.phone_number}</TableCell>
+                <TableCell className="font-mono">
+                  <div className="flex items-center gap-1">
+                    {log.phone_number}
+                    <ClickToCall phoneNumber={log.phone_number} />
+                  </div>
+                </TableCell>
                 <TableCell>{log.caller_name || '-'}</TableCell>
                 <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
                 <TableCell className="font-mono">{formatDuration(log.duration_seconds)}</TableCell>

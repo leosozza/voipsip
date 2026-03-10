@@ -144,7 +144,12 @@ export default function Contacts() {
                 {filteredContacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell className="font-medium">{contact.name}</TableCell>
-                    <TableCell className="font-mono">{contact.phone}</TableCell>
+                    <TableCell className="font-mono">
+                      <div className="flex items-center gap-1">
+                        {contact.phone}
+                        <ClickToCall phoneNumber={contact.phone} />
+                      </div>
+                    </TableCell>
                     <TableCell>{contact.email || '-'}</TableCell>
                     <TableCell>{contact.company_name || '-'}</TableCell>
                     <TableCell>
