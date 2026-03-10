@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Calls from "./pages/Calls";
 import Contacts from "./pages/Contacts";
 import Settings from "./pages/Settings";
+import BitrixCallback from "./pages/BitrixCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
