@@ -241,7 +241,61 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* External Lines Card - only show when connected */}
+      {/* Link Installation Card - show when not connected */}
+      {!isConnected && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Link2 className="h-5 w-5" />
+              Vincular Portal Bitrix24
+            </CardTitle>
+            <CardDescription>
+              Se o aplicativo já foi instalado via Marketplace, vincule o portal à sua empresa
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {showLinkForm ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Domínio do portal Bitrix24</Label>
+                  <Input
+                    value={linkDomain}
+                    onChange={(e) => setLinkDomain(e.target.value)}
+                    placeholder="empresa.bitrix24.com.br"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await linkInstallation.mutateAsync(linkDomain);
+                        toast({ title: 'Portal vinculado!', description: 'Tokens sincronizados com sucesso.' });
+                        setShowLinkForm(false);
+                        setLinkDomain('');
+                      } catch (err: any) {
+                        toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                      }
+                    }}
+                    disabled={linkInstallation.isPending || !linkDomain}
+                  >
+                    {linkInstallation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Vincular
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowLinkForm(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setShowLinkForm(true)}>
+                <Link2 className="mr-2 h-4 w-4" />
+                Vincular instalação existente
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
       {isConnected && !isExpired && (
         <Card>
           <CardHeader>
