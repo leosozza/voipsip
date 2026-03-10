@@ -36,7 +36,7 @@ export default function Contacts() {
     defaultValues: { name: '', phone: '', email: '', company_name: '', notes: '' },
   });
 
-  const filteredContacts = contacts.filter(c =>
+  const filteredContacts = contacts.filter((c: any) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.phone.includes(search)
   );
