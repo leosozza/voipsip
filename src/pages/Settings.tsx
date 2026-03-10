@@ -219,9 +219,21 @@ export default function Settings() {
                         {account.sip_username}@{account.sip_server}:{account.ws_port} ({account.transport})
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteSip(account.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {!account.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSetDefault(account.id)}
+                          title="Definir como padrão"
+                        >
+                          <Star className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteSip(account.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
