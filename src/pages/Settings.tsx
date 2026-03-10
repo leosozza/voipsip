@@ -77,6 +77,21 @@ export default function Settings() {
     }
   };
 
+  const handleSetDefault = async (id: string) => {
+    try {
+      // Remove default from all, then set on selected
+      for (const acc of sipAccounts) {
+        if (acc.is_default && acc.id !== id) {
+          await updateSipAccount.mutateAsync({ id: acc.id, is_default: false });
+        }
+      }
+      await updateSipAccount.mutateAsync({ id, is_default: true });
+      toast({ title: 'Conta padrão atualizada' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
   if (!currentCompany) {
     return (
       <AppLayout>
