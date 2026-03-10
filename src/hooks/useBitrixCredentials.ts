@@ -12,6 +12,12 @@ interface BitrixCredentials {
   updated_at: string;
 }
 
+interface ExternalLine {
+  NUMBER: string;
+  NAME?: string;
+  CRM_AUTO_CREATE?: number;
+}
+
 export function useBitrixCredentials(companyId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -96,6 +102,10 @@ export function useBitrixCredentials(companyId: string | undefined) {
       recording_url?: string;
       user_id?: number;
       line_number?: string;
+      call_start_date?: string;
+      user_phone_inner?: string;
+      crm_source?: string;
+      filename?: string;
     }) => {
       if (!companyId) throw new Error('Empresa não encontrada');
       const { data, error } = await supabase.functions.invoke('bitrix-sync', {
@@ -104,6 +114,81 @@ export function useBitrixCredentials(companyId: string | undefined) {
           company_id: companyId,
           call_data: callData,
         },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  // External lines management
+  const getExternalLines = useMutation({
+    mutationFn: async () => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'get_external_lines', company_id: companyId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data?.result as ExternalLine[];
+    },
+  });
+
+  const addExternalLine = useMutation({
+    mutationFn: async (lineData: { number: string; name?: string; crm_auto_create?: number }) => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'add_external_line', company_id: companyId, call_data: lineData },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  const deleteExternalLine = useMutation({
+    mutationFn: async (number: string) => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'delete_external_line', company_id: companyId, call_data: { number } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  // Event binding
+  const bindEvents = useMutation({
+    mutationFn: async () => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'bind_events', company_id: companyId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  const unbindEvents = useMutation({
+    mutationFn: async () => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'unbind_events', company_id: companyId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  // Search CRM
+  const searchCrm = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      if (!companyId) throw new Error('Empresa não encontrada');
+      const { data, error } = await supabase.functions.invoke('bitrix-sync', {
+        body: { action: 'search_crm', company_id: companyId, call_data: { phone_number: phoneNumber } },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -125,5 +210,11 @@ export function useBitrixCredentials(companyId: string | undefined) {
     deleteBitrixCredentials,
     testConnection,
     syncCallToBitrix,
+    getExternalLines,
+    addExternalLine,
+    deleteExternalLine,
+    bindEvents,
+    unbindEvents,
+    searchCrm,
   };
 }
