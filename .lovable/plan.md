@@ -1,59 +1,61 @@
 
-# Plano: Reenviar telephony.externalcall.finish para Deal 134
 
-## Diagnóstico
+# Plano: Enviar dados de chamadas e gravações para o Bitrix24
 
-O `telephony.externalcall.finish` falhou porque o **access_token do Bitrix24 expirou em 2 de fevereiro de 2026**. A chamada ocorreu em 18 de fevereiro, logo todas as chamadas à API do Bitrix24 falharam silenciosamente.
+## Como funciona
 
-**Dados da chamada:**
-- Bitrix Call ID: `externalCall.d58222b22d4e11e3d273c9b174a08d9e.1771443560`
-- Bitrix User ID: `1`
-- Duração: 180 segundos
-- Status: completed (code 200)
-- Gravação: `https://listener.api4com.com/files/listen/a6f1f205-1232-4705-a53f-599e3241826d.mp3`
-- Endpoint: `https://thoth24.bitrix24.com.br/rest/`
+Quando uma chamada termina (ou é registrada manualmente), o app envia automaticamente os dados para o Bitrix24 usando a API REST de telefonia:
+
+1. `telephony.externalcall.register` — registra o início da chamada no Bitrix
+2. `telephony.externalcall.finish` — finaliza com duração, status e URL da gravação
 
 ## O que será feito
 
-### 1. Criar Edge Function `retry-call-finish`
+### 1. Tabela de credenciais Bitrix24
+- Criar tabela `bitrix_credentials` com `company_id`, `bitrix_domain`, `access_token`, `refresh_token`, `client_id`, `client_secret`, `expires_at`
+- RLS: somente admin da empresa pode gerenciar
 
-Uma função que:
-1. Renova o token OAuth usando o `refresh_token` existente (via `https://oauth.bitrix.info/oauth/token/`)
-2. Salva o novo token no banco de dados
-3. Envia `telephony.externalcall.finish` com os dados da chamada e a URL da gravação
-4. Retorna o resultado da operação
+### 2. Edge Function `bitrix-sync`
+- Recebe dados da chamada (call_log_id ou dados diretos)
+- Renova o token OAuth automaticamente se expirado (usando refresh_token via `oauth.bitrix.info/oauth/token/`)
+- Chama `telephony.externalcall.register` e `telephony.externalcall.finish` na API REST do Bitrix24
+- Envia `recording_url` no campo `RECORD_URL` do finish
+- Salva novo token no banco após refresh
 
-A function será chamada via POST com o `company_id` no body, e os dados da chamada estarão hardcoded para esta operação específica.
+### 3. Trigger automático (opcional)
+- Trigger no banco: quando `call_logs` recebe INSERT com `status = 'completed'`, dispara a edge function via `pg_net`
+- Alternativa: chamar a function direto do frontend após registro manual
 
-### 2. Configuração
+### 4. Configuração no Settings
+- Nova seção "Integração Bitrix24" na página de configurações
+- Campos: domínio Bitrix, client_id, client_secret
+- Botão "Autorizar" que inicia fluxo OAuth do Bitrix24
+- Status da conexão (conectado/desconectado, token válido/expirado)
 
-Adicionar ao `supabase/config.toml`:
-```toml
-[functions.retry-call-finish]
-verify_jwt = false
-```
+### 5. Sobre gravações
+- Se o MicroSIP ou PBX gerar arquivos de gravação, o `recording_url` precisa ser uma URL pública acessível
+- O Bitrix24 faz download da gravação a partir da URL enviada no `RECORD_URL`
+- Opção: usar file storage do Lovable Cloud para upload de gravações e gerar URL pública
 
-### 3. Executar e Testar
-
-Após deploy, chamar a function para reenviar o finish e verificar se a gravação foi vinculada ao deal no Bitrix24.
-
----
-
-## Detalhes Técnicos
-
-**Fluxo da function:**
+## Fluxo completo
 
 ```text
-1. Buscar credenciais Bitrix24 (company_id: 82e09b93...)
-2. Renovar OAuth token via oauth.bitrix.info
-3. Salvar novo token no banco
-4. POST telephony.externalcall.finish com:
-   - CALL_ID: externalCall.d58222b2...
-   - USER_ID: 1
-   - DURATION: 180
-   - STATUS_CODE: 200
-   - RECORD_URL: https://listener.api4com.com/files/listen/a6f1f205...mp3
-5. Retornar resultado
+Chamada finalizada
+       │
+       ▼
+  call_logs INSERT
+       │
+       ▼
+  Edge Function bitrix-sync
+       │
+       ├─ Refresh token (se expirado)
+       ├─ telephony.externalcall.register
+       ├─ telephony.externalcall.finish
+       │    └─ RECORD_URL (URL da gravação)
+       └─ Salva resultado
 ```
 
-**Problema raiz a resolver depois:** O `api4com-webhook` não faz refresh de token antes de chamar o Bitrix24. Isso deve ser corrigido para evitar falhas futuras.
+## Pré-requisitos
+- Aplicação registrada no marketplace do Bitrix24 (ou app local) com permissões `telephony` e `crm`
+- As credenciais `BITRIX_CLIENT_ID` e `BITRIX_CLIENT_SECRET` já existem nos secrets do projeto
+
