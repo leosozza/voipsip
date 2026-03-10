@@ -108,6 +108,50 @@ export type Database = {
           },
         ]
       }
+      bitrix_installations: {
+        Row: {
+          access_token: string | null
+          company_id: string | null
+          created_at: string
+          domain: string
+          expires_at: string | null
+          id: string
+          member_id: string
+          refresh_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          company_id?: string | null
+          created_at?: string
+          domain: string
+          expires_at?: string | null
+          id?: string
+          member_id: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          company_id?: string | null
+          created_at?: string
+          domain?: string
+          expires_at?: string | null
+          id?: string
+          member_id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bitrix_installations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           call_ended_at: string | null
