@@ -4,7 +4,7 @@ import { PhoneIncoming, PhoneOutgoing, Play, Phone } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { CallLog } from '@/types/api4com';
+import type { CallLog } from '@/types/voip';
 
 interface CallLogTableProps {
   callLogs: CallLog[];
@@ -31,9 +31,7 @@ export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
-        ))}
+        {[...Array(5)].map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />))}
       </div>
     );
   }
@@ -43,9 +41,7 @@ export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
         <Phone className="mb-4 h-12 w-12 text-muted-foreground" />
         <p className="text-lg font-medium">Nenhuma chamada registrada</p>
-        <p className="text-sm text-muted-foreground">
-          As chamadas aparecerão aqui conforme forem realizadas.
-        </p>
+        <p className="text-sm text-muted-foreground">As chamadas aparecerão aqui conforme forem realizadas.</p>
       </div>
     );
   }
@@ -69,33 +65,18 @@ export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
             const status = statusConfig[log.status] || { label: log.status, variant: 'outline' as const };
             const DirectionIcon = log.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing;
             const directionColor = log.direction === 'inbound' ? 'text-emerald-600' : 'text-blue-600';
-
             return (
               <TableRow key={log.id}>
-                <TableCell>
-                  <DirectionIcon className={`h-4 w-4 ${directionColor}`} />
-                </TableCell>
+                <TableCell><DirectionIcon className={`h-4 w-4 ${directionColor}`} /></TableCell>
                 <TableCell className="font-mono">{log.phone_number}</TableCell>
                 <TableCell>{log.caller_name || '-'}</TableCell>
-                <TableCell>
-                  <Badge variant={status.variant}>{status.label}</Badge>
-                </TableCell>
-                <TableCell className="font-mono">
-                  {formatDuration(log.duration_seconds)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(new Date(log.call_started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                </TableCell>
+                <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
+                <TableCell className="font-mono">{formatDuration(log.duration_seconds)}</TableCell>
+                <TableCell className="text-muted-foreground">{format(new Date(log.call_started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
                 <TableCell>
                   {log.recording_url && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      asChild
-                    >
-                      <a href={log.recording_url} target="_blank" rel="noopener noreferrer">
-                        <Play className="h-4 w-4" />
-                      </a>
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={log.recording_url} target="_blank" rel="noopener noreferrer"><Play className="h-4 w-4" /></a>
                     </Button>
                   )}
                 </TableCell>

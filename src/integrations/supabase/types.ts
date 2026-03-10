@@ -14,98 +14,8 @@ export type Database = {
   }
   public: {
     Tables: {
-      api4com_credentials: {
-        Row: {
-          api_token: string
-          api4com_domain: string | null
-          company_id: string
-          created_at: string
-          id: string
-          updated_at: string
-          webhook_configured: boolean | null
-        }
-        Insert: {
-          api_token: string
-          api4com_domain?: string | null
-          company_id: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-          webhook_configured?: boolean | null
-        }
-        Update: {
-          api_token?: string
-          api4com_domain?: string | null
-          company_id?: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-          webhook_configured?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "api4com_credentials_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: true
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bitrix24_credentials: {
-        Row: {
-          access_token: string
-          client_endpoint: string | null
-          company_id: string
-          created_at: string
-          domain: string
-          expires_at: string | null
-          id: string
-          member_id: string | null
-          refresh_token: string | null
-          updated_at: string
-          webhook_url: string | null
-        }
-        Insert: {
-          access_token: string
-          client_endpoint?: string | null
-          company_id: string
-          created_at?: string
-          domain: string
-          expires_at?: string | null
-          id?: string
-          member_id?: string | null
-          refresh_token?: string | null
-          updated_at?: string
-          webhook_url?: string | null
-        }
-        Update: {
-          access_token?: string
-          client_endpoint?: string | null
-          company_id?: string
-          created_at?: string
-          domain?: string
-          expires_at?: string | null
-          id?: string
-          member_id?: string | null
-          refresh_token?: string | null
-          updated_at?: string
-          webhook_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bitrix24_credentials_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: true
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       call_logs: {
         Row: {
-          api4com_call_id: string | null
-          bitrix_call_id: string | null
           call_ended_at: string | null
           call_started_at: string
           caller_name: string | null
@@ -117,12 +27,11 @@ export type Database = {
           id: string
           phone_number: string
           recording_url: string | null
+          sip_call_id: string | null
           status: string
           user_mapping_id: string | null
         }
         Insert: {
-          api4com_call_id?: string | null
-          bitrix_call_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string
           caller_name?: string | null
@@ -134,12 +43,11 @@ export type Database = {
           id?: string
           phone_number: string
           recording_url?: string | null
+          sip_call_id?: string | null
           status: string
           user_mapping_id?: string | null
         }
         Update: {
-          api4com_call_id?: string | null
-          bitrix_call_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string
           caller_name?: string | null
@@ -151,6 +59,7 @@ export type Database = {
           id?: string
           phone_number?: string
           recording_url?: string | null
+          sip_call_id?: string | null
           status?: string
           user_mapping_id?: string | null
         }
@@ -169,32 +78,22 @@ export type Database = {
             referencedRelation: "external_phone_lines"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "call_logs_user_mapping_id_fkey"
-            columns: ["user_mapping_id"]
-            isOneToOne: false
-            referencedRelation: "user_mappings"
-            referencedColumns: ["id"]
-          },
         ]
       }
       companies: {
         Row: {
-          bitrix_member_id: string | null
           created_at: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
-          bitrix_member_id?: string | null
           created_at?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
-          bitrix_member_id?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -230,6 +129,98 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          company_id: string
+          company_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extensions: {
+        Row: {
+          company_id: string
+          created_at: string
+          display_name: string | null
+          extension_number: string
+          id: string
+          sip_account_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          display_name?: string | null
+          extension_number: string
+          id?: string
+          sip_account_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          display_name?: string | null
+          extension_number?: string
+          id?: string
+          sip_account_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extensions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extensions_sip_account_id_fkey"
+            columns: ["sip_account_id"]
+            isOneToOne: false
+            referencedRelation: "sip_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -272,37 +263,52 @@ export type Database = {
           },
         ]
       }
-      user_mappings: {
+      sip_accounts: {
         Row: {
-          api4com_extension: string
-          bitrix24_user_id: string
           company_id: string
           created_at: string
+          display_name: string
           id: string
+          is_default: boolean | null
+          sip_domain: string | null
+          sip_password: string
+          sip_server: string
+          sip_username: string
+          transport: string
           updated_at: string
-          user_name: string | null
+          ws_port: number
         }
         Insert: {
-          api4com_extension: string
-          bitrix24_user_id: string
           company_id: string
           created_at?: string
+          display_name?: string
           id?: string
+          is_default?: boolean | null
+          sip_domain?: string | null
+          sip_password: string
+          sip_server: string
+          sip_username: string
+          transport?: string
           updated_at?: string
-          user_name?: string | null
+          ws_port?: number
         }
         Update: {
-          api4com_extension?: string
-          bitrix24_user_id?: string
           company_id?: string
           created_at?: string
+          display_name?: string
           id?: string
+          is_default?: boolean | null
+          sip_domain?: string | null
+          sip_password?: string
+          sip_server?: string
+          sip_username?: string
+          transport?: string
           updated_at?: string
-          user_name?: string | null
+          ws_port?: number
         }
         Relationships: [
           {
-            foreignKeyName: "user_mappings_company_id_fkey"
+            foreignKeyName: "sip_accounts_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
