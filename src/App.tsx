@@ -26,6 +26,9 @@ function ProtectedApp() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/bitrix/callback" element={<BitrixCallback />} />
+        <Route path="/bitrix/app" element={<BitrixApp />} />
+        <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
+        <Route path="*" element={<NotFound />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
