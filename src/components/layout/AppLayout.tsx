@@ -16,6 +16,7 @@ const navItems = [
   { path: '/calls', label: 'Chamadas', icon: Phone },
   { path: '/contacts', label: 'Contatos', icon: Users },
   { path: '/settings', label: 'Configurações', icon: Settings },
+  { path: '/guide/microsip', label: 'Guia MicroSIP', icon: BookOpen },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {

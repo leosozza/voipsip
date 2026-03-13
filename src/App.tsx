@@ -26,6 +26,7 @@ function ProtectedApp() {
         <Route path="/calls" element={<Calls />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/guide/microsip" element={<MicroSipGuide />} />
         <Route path="/bitrix/callback" element={<BitrixCallback />} />
         <Route path="/bitrix/app" element={<BitrixApp />} />
         <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
