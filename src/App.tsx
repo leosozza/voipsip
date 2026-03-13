@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import BitrixCallback from "./pages/BitrixCallback";
 import BitrixApp from "./pages/BitrixApp";
 import BitrixSettingsPage from "./pages/BitrixSettingsPage";
+import MicroSipGuide from "./pages/MicroSipGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
