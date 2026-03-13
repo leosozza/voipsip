@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import BitrixCallback from "./pages/BitrixCallback";
 import BitrixApp from "./pages/BitrixApp";
 import BitrixSettingsPage from "./pages/BitrixSettingsPage";
+import MicroSipGuide from "./pages/MicroSipGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ function ProtectedApp() {
         <Route path="/calls" element={<Calls />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/guide/microsip" element={<MicroSipGuide />} />
         <Route path="/bitrix/callback" element={<BitrixCallback />} />
         <Route path="/bitrix/app" element={<BitrixApp />} />
         <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
