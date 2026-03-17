@@ -31,7 +31,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <aside className="hidden w-64 flex-col border-r bg-sidebar-background md:flex">
         <div className="flex h-14 items-center border-b px-4">
           <Phone className="mr-2 h-5 w-5 text-primary" />
-          <span className="font-bold text-sidebar-foreground">VoIP Connect</span>
+          <span className="font-bold text-sidebar-foreground">MicroSip Connector</span>
         </div>
         {currentCompany && (
           <div className="border-b px-4 py-2">

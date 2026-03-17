@@ -62,7 +62,7 @@ export function AuthForm() {
             {mode === 'signin' ? 'Entrar' : 'Criar Conta'}
           </CardTitle>
           <CardDescription>
-            Conector Api4Com para Bitrix24
+            MicroSip Connector
           </CardDescription>
         </CardHeader>
         <CardContent>
