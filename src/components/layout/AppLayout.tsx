@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
 
 interface AppLayoutProps {
   children: ReactNode;
