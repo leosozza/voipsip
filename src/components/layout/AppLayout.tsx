@@ -70,7 +70,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex flex-1 flex-col">
         <header className="flex h-14 items-center border-b px-4 md:hidden">
           <Phone className="mr-2 h-5 w-5 text-primary" />
-          <span className="font-bold">VoIP Connect</span>
+          <span className="font-bold">MicroSip Connector</span>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
         <nav className="flex border-t bg-background md:hidden">
