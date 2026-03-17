@@ -24,6 +24,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { currentCompany } = useCompany();
+  useBitrixRealtimeEvents();
 
   return (
     <div className="flex min-h-screen">
