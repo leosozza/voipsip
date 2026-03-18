@@ -93,6 +93,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           })}
         </nav>
       </div>
+      <Softphone sipAccount={defaultAccount ?? null} bitrixUserId={bitrixUserId} />
     </div>
   );
 }
