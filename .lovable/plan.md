@@ -1,44 +1,45 @@
 
-# Conformidade Bitrix24 Telephony - Plano de Implementação
+Diagnóstico confirmado
+- Logs do `bitrix-install`: recebeu `member_id` e tokens, mas sem `DOMAIN`.
+- A função hoje só salva se `domain && member_id`, então a instalação não é persistida.
+- Consulta no banco retornou `bitrix_installations` vazio.
+- Resultado: no iframe do Bitrix, o app cai no estado que exibe “Este aplicativo deve ser acessado através do Bitrix24.”
 
-## Status: CONCLUÍDO
+Plano de implementação
 
-### ✅ Fase 1: Corrigir bitrix-sync
-- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
-- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
-- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
-- [x] Adicionar action `search_crm` (searchCrmEntities)
-- [x] Adicionar action `bind_events` / `unbind_events`
-- [x] Adicionar action `show_call_card` / `hide_call_card`
+1) Corrigir persistência de instalação mesmo sem `DOMAIN` inicial
+- Criar migration para permitir `domain` nulo em `bitrix_installations`.
+- Ajustar `bitrix-install` para salvar sempre que houver `member_id` (com `domain` opcional).
+- Ampliar extração de domínio no install: `auth.domain`, `DOMAIN/domain`, `PLACEMENT_OPTIONS` (quando vier), e `origin/referer` quando disponíveis.
 
-### ✅ Fase 2: Eventos obrigatórios
-- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
-- [x] Criar tabela `bitrix_events` com realtime habilitado
-- [x] RLS policies para a tabela
-- [x] Processar OnExternalCallStart com SHOW=1 (telephony.externalcall.register)
+2) Fortalecer resolução de contexto nas páginas iframe
+- Em `BitrixApp.tsx` e `BitrixSettingsPage.tsx`, resolver contexto com fallback:
+  - query params case-insensitive (`DOMAIN/domain`, `member_id/MEMBER_ID`);
+  - `BX24.getAuth()` após `BX24.init`;
+  - `BX24.getDomain()` como fallback adicional.
+- Remover a dependência rígida de `member_id` para seguir fluxo:
+  - buscar instalação por `member_id` quando existir;
+  - fallback por `domain` quando `member_id` não vier.
 
-### ✅ Fase 3: UI
-- [x] Seção "Linhas Externas" nas configurações
-- [x] Seção "Eventos Bitrix24" com bind/unbind
-- [x] Hook atualizado com todas as novas mutations
+3) Auto-correção de vínculo técnico na primeira abertura
+- Se instalação existir sem `domain` e o iframe fornecer `domain`, atualizar o registro automaticamente.
+- Se não existir instalação, mas houver contexto suficiente (ex.: `member_id`), criar/upsert automaticamente via endpoint público já existente para evitar estado falso de erro.
 
-### ✅ Fase 4: BX24.js SDK + Conformidade Marketplace
-- [x] Integrar BX24.js SDK em BitrixApp.tsx (init, fitWindow, getAuth)
-- [x] Integrar BX24.js SDK em BitrixSettingsPage.tsx
-- [x] Configurar verify_jwt=false para bitrix-install e bitrix-events
-- [x] OnExternalCallStart → register com SHOW=1
+4) Ajustar estados de UI para diagnóstico real
+- Trocar a mensagem atual por estados mais precisos:
+  - “Instalação em processamento” para contexto parcial,
+  - erro real apenas quando nenhum contexto Bitrix estiver disponível.
+- Manter `BX24.fitWindow()` e inicialização sem regressão.
 
-## Checklist Marketplace
-| Requisito | Status |
-|---|---|
-| Register incoming/outgoing calls | ✅ |
-| Pass incoming line number (Sales Intelligence) | ✅ |
-| Attach call recording | ✅ |
-| OnExternalCallStart handler (click2call + SHOW=1) | ✅ |
-| OnExternalCallBackStart handler | ✅ |
-| BX24.installFinish() na instalação | ✅ |
-| BX24.js SDK nas páginas iframe | ✅ |
-
-## Próximos passos
-- Integrar eventos recebidos com o softphone (realtime subscription)
-- Implementar flow completo de click-to-call (evento → discagem automática)
+Detalhes técnicos
+- Arquivos-alvo:
+  - `supabase/migrations/*` (alterar nulabilidade de `bitrix_installations.domain`)
+  - `supabase/functions/bitrix-install/index.ts`
+  - `src/pages/BitrixApp.tsx`
+  - `src/pages/BitrixSettingsPage.tsx`
+  - (opcional) util compartilhado para resolver contexto Bitrix sem duplicação
+- Critérios de aceite:
+  1. Ao abrir dentro do Bitrix, a mensagem “deve ser acessado...” não aparece indevidamente.
+  2. A instalação passa a ser registrada no banco no primeiro install.
+  3. `/bitrix/app` e `/bitrix/settings` funcionam no iframe mesmo quando o domínio não vier no payload inicial.
+  4. `fitWindow()` continua funcionando.
