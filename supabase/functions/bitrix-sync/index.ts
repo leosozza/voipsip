@@ -511,6 +511,79 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === ACTION: get_users ===
+    if (action === "get_users") {
+      // Fetch all active users from Bitrix24
+      const params: Record<string, any> = {
+        FILTER: { ACTIVE: true },
+        SORT: "NAME",
+        ORDER: "ASC",
+      };
+      if (call_data?.start !== undefined) params.start = call_data.start;
+      const result = await bitrixApi(domain, token, "user.get", params);
+      return new Response(JSON.stringify({ success: true, result: result?.result, total: result?.total, next: result?.next }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_user_get ===
+    if (action === "voximplant_user_get") {
+      const params: Record<string, any> = {};
+      if (call_data?.user_ids) params.USER_ID = call_data.user_ids;
+      const result = await bitrixApi(domain, token, "voximplant.user.get", params);
+      return new Response(JSON.stringify({ success: true, result: result?.result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_user_activate_phone ===
+    if (action === "voximplant_user_activate_phone") {
+      const result = await bitrixApi(domain, token, "voximplant.user.activatePhone", {
+        USER_ID: call_data.user_id,
+      });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_user_deactivate_phone ===
+    if (action === "voximplant_user_deactivate_phone") {
+      const result = await bitrixApi(domain, token, "voximplant.user.deactivatePhone", {
+        USER_ID: call_data.user_id,
+      });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_line_get ===
+    if (action === "voximplant_line_get") {
+      const result = await bitrixApi(domain, token, "voximplant.line.get", {});
+      return new Response(JSON.stringify({ success: true, result: result?.result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_line_outgoing_set ===
+    if (action === "voximplant_line_outgoing_set") {
+      const result = await bitrixApi(domain, token, "voximplant.line.outgoing.set", {
+        LINE_ID: call_data.line_id,
+      });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: voximplant_line_outgoing_sip_set ===
+    if (action === "voximplant_line_outgoing_sip_set") {
+      const result = await bitrixApi(domain, token, "voximplant.line.outgoing.sip.set", {
+        CONFIG_ID: call_data.config_id,
+      });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(
       JSON.stringify({ error: "Ação inválida" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

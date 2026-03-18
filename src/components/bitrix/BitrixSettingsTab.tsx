@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { BitrixSettings } from '@/components/settings/BitrixSettings';
 import { BitrixSipLines } from '@/components/bitrix/BitrixSipLines';
+import { BitrixUserMappings } from '@/components/bitrix/BitrixUserMappings';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
@@ -152,6 +153,11 @@ export function BitrixSettingsTab({ companyId }: Props) {
 
       {/* SIP Lines in Bitrix24 */}
       <BitrixSipLines companyId={companyId} sipAccounts={sipAccounts} />
+
+      <Separator />
+
+      {/* User Mappings */}
+      <BitrixUserMappings companyId={companyId} />
 
       <Separator />
 
