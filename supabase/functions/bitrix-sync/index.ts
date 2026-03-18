@@ -465,6 +465,52 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === ACTION: sip_get ===
+    if (action === "sip_get") {
+      const result = await bitrixApi(domain, token, "voximplant.sip.get", {});
+      return new Response(JSON.stringify({ success: true, result: result?.result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: sip_add ===
+    if (action === "sip_add") {
+      const params: Record<string, any> = {
+        TYPE: call_data.type || "cloud",
+        TITLE: call_data.title,
+        SERVER: call_data.server,
+        LOGIN: call_data.login,
+        PASSWORD: call_data.password,
+      };
+      const result = await bitrixApi(domain, token, "voximplant.sip.add", params);
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: sip_delete ===
+    if (action === "sip_delete") {
+      const result = await bitrixApi(domain, token, "voximplant.sip.delete", {
+        CONFIG_ID: call_data.config_id,
+      });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: sip_update ===
+    if (action === "sip_update") {
+      const params: Record<string, any> = { CONFIG_ID: call_data.config_id };
+      if (call_data.title) params.TITLE = call_data.title;
+      if (call_data.server) params.SERVER = call_data.server;
+      if (call_data.login) params.LOGIN = call_data.login;
+      if (call_data.password) params.PASSWORD = call_data.password;
+      const result = await bitrixApi(domain, token, "voximplant.sip.update", params);
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(
       JSON.stringify({ error: "Ação inválida" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
