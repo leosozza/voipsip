@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
+import { useBitrixUserId } from '@/hooks/useBitrixUserId';
+import { useSipAccounts } from '@/hooks/useSipAccounts';
+import { Softphone } from '@/components/softphone/Softphone';
 
 interface AppLayoutProps {
   children: ReactNode;
