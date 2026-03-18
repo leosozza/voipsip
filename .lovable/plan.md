@@ -1,44 +1,25 @@
 
-# Conformidade Bitrix24 Telephony - Plano de Implementação
 
-## Status: CONCLUÍDO
+## Plano: Atualizar guia MicroSIP com campos reais do screenshot
 
-### ✅ Fase 1: Corrigir bitrix-sync
-- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
-- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
-- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
-- [x] Adicionar action `search_crm` (searchCrmEntities)
-- [x] Adicionar action `bind_events` / `unbind_events`
-- [x] Adicionar action `show_call_card` / `hide_call_card`
+O screenshot mostra a tela real "Conta" do MicroSIP 3.22.3 em português. Os campos no guia precisam ser reordenados e complementados para corresponder exatamente à interface real.
 
-### ✅ Fase 2: Eventos obrigatórios
-- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
-- [x] Criar tabela `bitrix_events` com realtime habilitado
-- [x] RLS policies para a tabela
-- [x] Processar OnExternalCallStart com SHOW=1 (telephony.externalcall.register)
+### Alterações em `src/pages/MicroSipGuide.tsx`
 
-### ✅ Fase 3: UI
-- [x] Seção "Linhas Externas" nas configurações
-- [x] Seção "Eventos Bitrix24" com bind/unbind
-- [x] Hook atualizado com todas as novas mutations
+**Reordenar e atualizar a lista de campos (linhas 189-197)** para seguir a ordem exata da tela:
 
-### ✅ Fase 4: BX24.js SDK + Conformidade Marketplace
-- [x] Integrar BX24.js SDK em BitrixApp.tsx (init, fitWindow, getAuth)
-- [x] Integrar BX24.js SDK em BitrixSettingsPage.tsx
-- [x] Configurar verify_jwt=false para bitrix-install e bitrix-events
-- [x] OnExternalCallStart → register com SHOW=1
+| Ordem | Campo (real) | Valor sugerido |
+|---|---|---|
+| 1 | Nome da Conta | nome da operadora (ex: Syma) |
+| 2 | Servidor SIP | `sip_server` |
+| 3 | Proxy SIP | mesmo que Servidor SIP |
+| 4 | Usuário | `sip_username` |
+| 5 | Domínio | `sip_domain` ou `sip_server` |
+| 6 | Login | mesmo que Usuário |
+| 7 | Senha | •••••••• |
+| 8 | Nome de Exibição | `display_name` |
+| 9 | Criptografia | Desabilitado |
+| 10 | Transporte | UDP |
 
-## Checklist Marketplace
-| Requisito | Status |
-|---|---|
-| Register incoming/outgoing calls | ✅ |
-| Pass incoming line number (Sales Intelligence) | ✅ |
-| Attach call recording | ✅ |
-| OnExternalCallStart handler (click2call + SHOW=1) | ✅ |
-| OnExternalCallBackStart handler | ✅ |
-| BX24.installFinish() na instalação | ✅ |
-| BX24.js SDK nas páginas iframe | ✅ |
+**Também**: salvar o screenshot como imagem de referência no guia, substituindo a imagem atual (`microsip-config-example.png`).
 
-## Próximos passos
-- Integrar eventos recebidos com o softphone (realtime subscription)
-- Implementar flow completo de click-to-call (evento → discagem automática)
