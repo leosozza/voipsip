@@ -1,30 +1,44 @@
 
+# Conformidade Bitrix24 Telephony - Plano de Implementação
 
-## Plano: Vincular empresa diretamente pelo iframe do Bitrix24
+## Status: CONCLUÍDO
 
-### Problema
-O portal `thoth24.bitrix24.com` está instalado (`bitrix_installations` com `member_id`) mas `company_id` é `null`. A tela de configurações dentro do iframe mostra "Empresa não vinculada" sem nenhuma ação útil. Não existem empresas cadastradas ainda no sistema.
+### ✅ Fase 1: Corrigir bitrix-sync
+- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
+- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
+- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
+- [x] Adicionar action `search_crm` (searchCrmEntities)
+- [x] Adicionar action `bind_events` / `unbind_events`
+- [x] Adicionar action `show_call_card` / `hide_call_card`
 
-### Solução
-Adicionar um fluxo de **login/cadastro + criação de empresa** diretamente na página `BitrixSettingsPage`, permitindo que o usuário resolva tudo sem sair do iframe do Bitrix24.
+### ✅ Fase 2: Eventos obrigatórios
+- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
+- [x] Criar tabela `bitrix_events` com realtime habilitado
+- [x] RLS policies para a tabela
+- [x] Processar OnExternalCallStart com SHOW=1 (telephony.externalcall.register)
 
-### Alterações
+### ✅ Fase 3: UI
+- [x] Seção "Linhas Externas" nas configurações
+- [x] Seção "Eventos Bitrix24" com bind/unbind
+- [x] Hook atualizado com todas as novas mutations
 
-**1. `src/pages/BitrixSettingsPage.tsx`** — Quando `companyId` for `null`:
-- Mostrar formulário de login/cadastro (email + senha) inline
-- Após autenticar, verificar se o usuário já tem empresa (`company_members`)
-- Se sim: vincular automaticamente a instalação (`bitrix_installations.company_id = empresa.id`) e mostrar `BitrixSettings`
-- Se não: mostrar formulário para criar empresa, depois vincular automaticamente
+### ✅ Fase 4: BX24.js SDK + Conformidade Marketplace
+- [x] Integrar BX24.js SDK em BitrixApp.tsx (init, fitWindow, getAuth)
+- [x] Integrar BX24.js SDK em BitrixSettingsPage.tsx
+- [x] Configurar verify_jwt=false para bitrix-install e bitrix-events
+- [x] OnExternalCallStart → register com SHOW=1
 
-**2. Lógica de vinculação automática:**
-- Após identificar `companyId` do usuário logado, fazer `UPDATE bitrix_installations SET company_id = ? WHERE member_id = ?`
-- Atualizar o estado local para renderizar `BitrixSettings`
+## Checklist Marketplace
+| Requisito | Status |
+|---|---|
+| Register incoming/outgoing calls | ✅ |
+| Pass incoming line number (Sales Intelligence) | ✅ |
+| Attach call recording | ✅ |
+| OnExternalCallStart handler (click2call + SHOW=1) | ✅ |
+| OnExternalCallBackStart handler | ✅ |
+| BX24.installFinish() na instalação | ✅ |
+| BX24.js SDK nas páginas iframe | ✅ |
 
-**3. RLS:** A tabela `bitrix_installations` já permite updates via anon/authenticated? Verificar e ajustar se necessário com uma migration para permitir que usuários autenticados atualizem o `company_id` de instalações não vinculadas.
-
-### Fluxo do usuário
-1. Abre configurações no iframe → vê "Empresa não vinculada"
-2. Faz login ou cadastro no formulário inline
-3. Se já tem empresa → vincula automaticamente → mostra configurações
-4. Se não tem empresa → cria uma → vincula → mostra configurações
-
+## Próximos passos
+- Integrar eventos recebidos com o softphone (realtime subscription)
+- Implementar flow completo de click-to-call (evento → discagem automática)
