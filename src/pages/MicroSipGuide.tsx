@@ -187,13 +187,15 @@ export default function MicroSipGuide() {
                   <Separator />
                   <div className="space-y-2 text-sm">
                     {[
-                      { label: 'Nome de Exibição', value: defaultAccount?.display_name, fallback: 'seu nome' },
+                      { label: 'Nome da Conta', value: defaultAccount?.display_name, fallback: 'ex: Syma' },
                       { label: 'Servidor SIP', value: defaultAccount?.sip_server, fallback: 'ex: sip.seuprovedor.com.br' },
                       { label: 'Proxy SIP', value: defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
                       { label: 'Usuário', value: defaultAccount?.sip_username, fallback: 'seu usuário SIP' },
-                      { label: 'Login', value: defaultAccount?.sip_username, fallback: 'mesmo que Usuário' },
                       { label: 'Domínio', value: defaultAccount?.sip_domain || defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
+                      { label: 'Login', value: defaultAccount?.sip_username, fallback: 'mesmo que Usuário' },
                       { label: 'Senha', value: '••••••••', fallback: 'sua senha SIP' },
+                      { label: 'Nome de Exibição', value: defaultAccount?.display_name, fallback: 'seu nome' },
+                      { label: 'Criptografia', value: 'Desabilitado', fallback: 'Desabilitado' },
                       { label: 'Transporte', value: 'UDP', fallback: 'UDP' },
                     ].map((field) => (
                       <div key={field.label} className="flex items-center justify-between gap-2">
