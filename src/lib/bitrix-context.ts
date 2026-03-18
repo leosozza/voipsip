@@ -49,22 +49,28 @@ export async function resolveBitrixContext(searchParams: URLSearchParams): Promi
   try {
     await loadBX24Script();
     await new Promise<void>((resolve) => {
-      window.BX24?.init(() => {
-        window.BX24?.fitWindow();
-        const auth = window.BX24?.getAuth();
-        if (auth) {
-          if (!domain) domain = auth.domain;
-          if (!memberId) memberId = auth.member_id;
-        }
-        // Additional fallback for domain
-        if (!domain) {
-          try {
-            const d = window.BX24?.getDomain?.();
-            if (d) domain = d;
-          } catch { /* ignore */ }
-        }
+      const timeout = setTimeout(() => resolve(), 3000);
+      try {
+        window.BX24?.init(() => {
+          clearTimeout(timeout);
+          window.BX24?.fitWindow();
+          const auth = window.BX24?.getAuth();
+          if (auth) {
+            if (!domain) domain = auth.domain;
+            if (!memberId) memberId = auth.member_id;
+          }
+          if (!domain) {
+            try {
+              const d = window.BX24?.getDomain?.();
+              if (d) domain = d;
+            } catch { /* ignore */ }
+          }
+          resolve();
+        });
+      } catch {
+        clearTimeout(timeout);
         resolve();
-      });
+      }
     });
   } catch {
     // BX24 SDK not available (direct access)
