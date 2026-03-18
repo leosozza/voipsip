@@ -205,6 +205,7 @@ export type Database = {
       }
       call_logs: {
         Row: {
+          bitrix_call_id: string | null
           call_ended_at: string | null
           call_started_at: string
           caller_name: string | null
@@ -221,6 +222,7 @@ export type Database = {
           user_mapping_id: string | null
         }
         Insert: {
+          bitrix_call_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string
           caller_name?: string | null
@@ -237,6 +239,7 @@ export type Database = {
           user_mapping_id?: string | null
         }
         Update: {
+          bitrix_call_id?: string | null
           call_ended_at?: string | null
           call_started_at?: string
           caller_name?: string | null
