@@ -43,7 +43,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
 
   const onAddSip = async (data: SipForm) => {
     try {
-      await addSipAccount.mutateAsync(data);
+      await addSipAccount.mutateAsync(data as any);
       toast({ title: 'Conta SIP adicionada' });
       form.reset();
       setShowSipForm(false);

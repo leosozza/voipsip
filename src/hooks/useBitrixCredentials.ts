@@ -158,6 +158,24 @@ export function useBitrixCredentials(companyId: string | undefined) {
     },
   });
 
+  // VoxImplant SIP line management
+  const sipGetLines = useMutation({
+    mutationFn: async () => {
+      const data = await invokeBitrixSync('sip_get');
+      return data?.result as any[];
+    },
+  });
+
+  const sipAddLine = useMutation({
+    mutationFn: (lineData: { type: string; title: string; server: string; login: string; password: string }) =>
+      invokeBitrixSync('sip_add', lineData),
+  });
+
+  const sipDeleteLine = useMutation({
+    mutationFn: (configId: number) =>
+      invokeBitrixSync('sip_delete', { config_id: configId }),
+  });
+
   const isConnected = !!credentials?.access_token;
   const isExpired = credentials?.expires_at
     ? new Date(credentials.expires_at) < new Date()
@@ -179,5 +197,8 @@ export function useBitrixCredentials(companyId: string | undefined) {
     unbindEvents,
     searchCrm,
     linkInstallation,
+    sipGetLines,
+    sipAddLine,
+    sipDeleteLine,
   };
 }
