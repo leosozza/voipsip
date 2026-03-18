@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Phone, CheckCircle, Settings, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+
+declare global {
+  interface Window {
+    BX24?: {
+      init: (callback: () => void) => void;
+      fitWindow: () => void;
+      getAuth: () => { domain: string; member_id: string; access_token: string } | null;
+      isAdmin: () => boolean;
+    };
+  }
+}
 
 interface InstallationStatus {
   domain: string;
@@ -13,16 +24,50 @@ interface InstallationStatus {
   companyLinked: boolean;
 }
 
+function loadBX24Script(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.BX24) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = '//api.bitrix24.com/api/v1/';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load BX24 SDK'));
+    document.head.appendChild(script);
+  });
+}
+
 export default function BitrixApp() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<InstallationStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const bx24Initialized = useRef(false);
 
-  const domain = searchParams.get('DOMAIN') || '';
-  const memberId = searchParams.get('member_id') || '';
+  const paramDomain = searchParams.get('DOMAIN') || '';
+  const paramMemberId = searchParams.get('member_id') || '';
 
   useEffect(() => {
-    async function checkInstallation() {
+    async function init() {
+      let domain = paramDomain;
+      let memberId = paramMemberId;
+
+      // Try BX24 SDK for context
+      try {
+        await loadBX24Script();
+        await new Promise<void>((resolve) => {
+          window.BX24?.init(() => {
+            bx24Initialized.current = true;
+            window.BX24?.fitWindow();
+            const auth = window.BX24?.getAuth();
+            if (auth) {
+              if (!domain) domain = auth.domain;
+              if (!memberId) memberId = auth.member_id;
+            }
+            resolve();
+          });
+        });
+      } catch {
+        // BX24 SDK not available (direct access)
+      }
+
       if (!memberId) {
         setLoading(false);
         return;
@@ -53,8 +98,8 @@ export default function BitrixApp() {
       }
     }
 
-    checkInstallation();
-  }, [domain, memberId]);
+    init();
+  }, [paramDomain, paramMemberId]);
 
   if (loading) {
     return (
@@ -101,7 +146,7 @@ export default function BitrixApp() {
             ) : (
               <div className="text-center space-y-2">
                 <p className="text-muted-foreground">
-                  {memberId
+                  {status?.memberId
                     ? 'Instalação não encontrada. Reinstale o aplicativo.'
                     : 'Este aplicativo deve ser acessado através do Bitrix24.'}
                 </p>
@@ -123,6 +168,8 @@ export default function BitrixApp() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  const domain = status?.domain || '';
+                  const memberId = status?.memberId || '';
                   const settingsUrl = `/bitrix/settings?DOMAIN=${encodeURIComponent(domain)}&member_id=${encodeURIComponent(memberId)}`;
                   window.location.href = settingsUrl;
                 }}
