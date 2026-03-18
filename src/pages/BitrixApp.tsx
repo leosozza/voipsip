@@ -71,7 +71,7 @@ export default function BitrixApp() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5" />
-              VoIP SIP - Integração Telefonia
+              MicroSip Connector - Integração Telefonia
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -94,7 +94,7 @@ export default function BitrixApp() {
                 {!status.companyLinked && (
                   <p className="text-sm text-muted-foreground">
                     Para vincular este portal a uma empresa, acesse as Configurações do aplicativo
-                    e faça login na plataforma VoIP SIP.
+                    e faça login na plataforma MicroSip Connector.
                   </p>
                 )}
               </div>

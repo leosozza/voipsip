@@ -1,23 +1,26 @@
 
+# Conformidade Bitrix24 Telephony - Plano de Implementação
 
-## Plano: Renomear referências restantes e corrigir fluxo de instalação
+## Status: EM EXECUÇÃO
 
-### Problema
-1. A tela de login na versão **publicada** ainda mostra "Api4Com" — o código-fonte já foi corrigido para "MicroSip Connector", mas a versão publicada precisa ser atualizada (clicar **Update** no publish dialog)
-2. Existem referências "VoIP SIP" em 3 arquivos que também precisam ser renomeadas para "MicroSip Connector"
-3. O README.md ainda referencia "Api4Com" extensivamente
+### ✅ Fase 1: Corrigir bitrix-sync
+- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
+- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
+- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
+- [x] Adicionar action `search_crm` (searchCrmEntities)
+- [x] Adicionar action `bind_events` / `unbind_events`
+- [x] Adicionar action `show_call_card` / `hide_call_card`
 
-### Alterações
+### ✅ Fase 2: Eventos obrigatórios
+- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
+- [x] Criar tabela `bitrix_events` com realtime habilitado
+- [x] RLS policies para a tabela
 
-**1. Renomear "VoIP SIP" → "MicroSip Connector" em:**
-- `src/pages/BitrixApp.tsx` — título do card e texto de vinculação
-- `src/pages/BitrixSettingsPage.tsx` — texto de instrução
-- `supabase/functions/bitrix-install/index.ts` — título da página HTML, textos de instalação/sucesso
+### ✅ Fase 3: UI
+- [x] Seção "Linhas Externas" nas configurações
+- [x] Seção "Eventos Bitrix24" com bind/unbind
+- [x] Hook atualizado com todas as novas mutations
 
-**2. Atualizar README.md** — substituir todas as referências de "Api4Com" por "MicroSip Connector" e atualizar a descrição da arquitetura
-
-**3. Republicar o frontend** — após as alterações, será necessário clicar "Update" no botão Publish para que a versão publicada reflita as mudanças
-
-### Nota sobre vinculação ao Bitrix
-O fluxo de instalação (`bitrix-install`) já salva o `member_id` e `domain` na tabela `bitrix_installations`. A vinculação à empresa acontece na página de Settings do Bitrix (`/bitrix/settings`) quando o usuário faz login. Este fluxo já está implementado — as páginas iframe (`BitrixApp` e `BitrixSettingsPage`) já funcionam sem autenticação.
-
+## Próximos passos
+- Integrar eventos recebidos com o softphone (realtime subscription)
+- Implementar flow completo de click-to-call (evento → discagem automática)

@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Instalação VoIP SIP</title>
+  <title>Instalação MicroSip Connector</title>
   <script src="https://api.bitrix24.com/api/v1/"></script>
   <style>
     body {
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
 <body>
   <div class="container" id="content">
     <div class="spinner"></div>
-    <h2>Instalando VoIP SIP...</h2>
+    <h2>Instalando MicroSip Connector...</h2>
     <p>Aguarde enquanto configuramos a integração.</p>
   </div>
   <script>
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       function showSuccess() {
         content.innerHTML = '<div class="success"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>' +
           '<h2>Instalação concluída!</h2>' +
-          '<p>O aplicativo VoIP SIP foi instalado com sucesso.</p>';
+          '<p>O MicroSip Connector foi instalado com sucesso.</p>';
       }
 
       function showError(msg) {
