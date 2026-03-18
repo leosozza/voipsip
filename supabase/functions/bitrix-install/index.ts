@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
 <body>
   <div class="container" id="content">
     <div class="spinner"></div>
-    <h2>Instalando VoIP SIP...</h2>
+    <h2>Instalando MicroSip Connector...</h2>
     <p>Aguarde enquanto configuramos a integração.</p>
   </div>
   <script>
