@@ -1,21 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Phone, CheckCircle, Settings, Loader2 } from 'lucide-react';
+import { Phone, CheckCircle, Settings, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-declare global {
-  interface Window {
-    BX24?: {
-      init: (callback: () => void) => void;
-      fitWindow: () => void;
-      getAuth: () => { domain: string; member_id: string; access_token: string } | null;
-      isAdmin: () => boolean;
-    };
-  }
-}
+import { resolveBitrixContext } from '@/lib/bitrix-context';
 
 interface InstallationStatus {
   domain: string;
@@ -24,72 +14,64 @@ interface InstallationStatus {
   companyLinked: boolean;
 }
 
-function loadBX24Script(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.BX24) { resolve(); return; }
-    const script = document.createElement('script');
-    script.src = '//api.bitrix24.com/api/v1/';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load BX24 SDK'));
-    document.head.appendChild(script);
-  });
-}
-
 export default function BitrixApp() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<InstallationStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const bx24Initialized = useRef(false);
-
-  const paramDomain = searchParams.get('DOMAIN') || '';
-  const paramMemberId = searchParams.get('member_id') || '';
+  const [hasContext, setHasContext] = useState(true);
 
   useEffect(() => {
     async function init() {
-      let domain = paramDomain;
-      let memberId = paramMemberId;
+      const ctx = await resolveBitrixContext(searchParams);
 
-      // Try BX24 SDK for context
-      try {
-        await loadBX24Script();
-        await new Promise<void>((resolve) => {
-          window.BX24?.init(() => {
-            bx24Initialized.current = true;
-            window.BX24?.fitWindow();
-            const auth = window.BX24?.getAuth();
-            if (auth) {
-              if (!domain) domain = auth.domain;
-              if (!memberId) memberId = auth.member_id;
-            }
-            resolve();
-          });
-        });
-      } catch {
-        // BX24 SDK not available (direct access)
-      }
-
-      if (!memberId) {
+      // No Bitrix context at all
+      if (!ctx.memberId && !ctx.domain) {
+        setHasContext(false);
         setLoading(false);
         return;
       }
 
       try {
-        const { data } = await supabase
-          .from('bitrix_installations')
-          .select('id, domain, company_id')
-          .eq('member_id', memberId)
-          .maybeSingle();
+        // Try by member_id first, fallback to domain
+        let data: any = null;
+        if (ctx.memberId) {
+          const res = await supabase
+            .from('bitrix_installations')
+            .select('id, domain, company_id, member_id')
+            .eq('member_id', ctx.memberId)
+            .maybeSingle();
+          data = res.data;
+        }
+        if (!data && ctx.domain) {
+          const res = await supabase
+            .from('bitrix_installations')
+            .select('id, domain, company_id, member_id')
+            .eq('domain', ctx.domain)
+            .maybeSingle();
+          data = res.data;
+        }
+
+        // Auto-correct: update domain if installation exists without one
+        if (data && !data.domain && ctx.domain) {
+          await supabase
+            .from('bitrix_installations')
+            .update({ domain: ctx.domain })
+            .eq('id', data.id);
+          data.domain = ctx.domain;
+        }
+
+        const resolvedDomain = ctx.domain || data?.domain || '';
 
         setStatus({
-          domain: domain || data?.domain || '',
-          memberId,
+          domain: resolvedDomain,
+          memberId: ctx.memberId || data?.member_id || '',
           isInstalled: !!data,
           companyLinked: !!data?.company_id,
         });
       } catch {
         setStatus({
-          domain,
-          memberId,
+          domain: ctx.domain,
+          memberId: ctx.memberId,
           isInstalled: false,
           companyLinked: false,
         });
@@ -99,12 +81,30 @@ export default function BitrixApp() {
     }
 
     init();
-  }, [paramDomain, paramMemberId]);
+  }, [searchParams]);
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Carregando integração...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasContext) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center space-y-2">
+            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground">
+              Este aplicativo deve ser acessado através do Bitrix24.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -126,10 +126,12 @@ export default function BitrixApp() {
                   <CheckCircle className="h-5 w-5 text-green-500" />
                   <span className="font-medium">Aplicativo instalado</span>
                 </div>
-                <div className="rounded-lg border p-3 space-y-1">
-                  <p className="text-sm text-muted-foreground">Portal</p>
-                  <p className="font-medium">{status.domain}</p>
-                </div>
+                {status.domain && (
+                  <div className="rounded-lg border p-3 space-y-1">
+                    <p className="text-sm text-muted-foreground">Portal</p>
+                    <p className="font-medium">{status.domain}</p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Empresa vinculada:</span>
                   <Badge variant={status.companyLinked ? 'default' : 'secondary'}>
@@ -145,41 +147,41 @@ export default function BitrixApp() {
               </div>
             ) : (
               <div className="text-center space-y-2">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
                 <p className="text-muted-foreground">
-                  {status?.memberId
-                    ? 'Instalação não encontrada. Reinstale o aplicativo.'
-                    : 'Este aplicativo deve ser acessado através do Bitrix24.'}
+                  Instalação em processamento. Aguarde alguns instantes e recarregue a página.
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Funcionalidades</p>
-                <p className="text-sm text-muted-foreground">
-                  Click-to-Call, registro de chamadas, gravações e Sales Intelligence
-                </p>
+        {status?.isInstalled && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Funcionalidades</p>
+                  <p className="text-sm text-muted-foreground">
+                    Click-to-Call, registro de chamadas, gravações e Sales Intelligence
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const d = status?.domain || '';
+                    const m = status?.memberId || '';
+                    window.location.href = `/bitrix/settings?DOMAIN=${encodeURIComponent(d)}&member_id=${encodeURIComponent(m)}`;
+                  }}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurações
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const domain = status?.domain || '';
-                  const memberId = status?.memberId || '';
-                  const settingsUrl = `/bitrix/settings?DOMAIN=${encodeURIComponent(domain)}&member_id=${encodeURIComponent(memberId)}`;
-                  window.location.href = settingsUrl;
-                }}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

@@ -5,57 +5,41 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BitrixSettings } from '@/components/settings/BitrixSettings';
-
-
-
-function loadBX24Script(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.BX24) { resolve(); return; }
-    const script = document.createElement('script');
-    script.src = '//api.bitrix24.com/api/v1/';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load BX24 SDK'));
-    document.head.appendChild(script);
-  });
-}
+import { resolveBitrixContext } from '@/lib/bitrix-context';
 
 export default function BitrixSettingsPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [domain, setDomain] = useState(searchParams.get('DOMAIN') || '');
-  const [memberId, setMemberId] = useState(searchParams.get('member_id') || '');
+  const [domain, setDomain] = useState('');
+  const [memberId, setMemberId] = useState('');
 
   useEffect(() => {
     async function init() {
-      let d = domain;
-      let m = memberId;
+      const ctx = await resolveBitrixContext(searchParams);
+      setDomain(ctx.domain);
+      setMemberId(ctx.memberId);
+
+      if (!ctx.memberId && !ctx.domain) { setLoading(false); return; }
 
       try {
-        await loadBX24Script();
-        await new Promise<void>((resolve) => {
-          window.BX24?.init(() => {
-            window.BX24?.fitWindow();
-            const auth = window.BX24?.getAuth();
-            if (auth) {
-              if (!d) { d = auth.domain; setDomain(d); }
-              if (!m) { m = auth.member_id; setMemberId(m); }
-            }
-            resolve();
-          });
-        });
-      } catch {
-        // SDK not available
-      }
-
-      if (!m) { setLoading(false); return; }
-
-      try {
-        const { data } = await supabase
-          .from('bitrix_installations')
-          .select('company_id')
-          .eq('member_id', m)
-          .maybeSingle();
+        let data: any = null;
+        if (ctx.memberId) {
+          const res = await supabase
+            .from('bitrix_installations')
+            .select('company_id')
+            .eq('member_id', ctx.memberId)
+            .maybeSingle();
+          data = res.data;
+        }
+        if (!data && ctx.domain) {
+          const res = await supabase
+            .from('bitrix_installations')
+            .select('company_id')
+            .eq('domain', ctx.domain)
+            .maybeSingle();
+          data = res.data;
+        }
         setCompanyId(data?.company_id || null);
       } catch {
         // ignore
@@ -65,7 +49,7 @@ export default function BitrixSettingsPage() {
     }
 
     init();
-  }, []);
+  }, [searchParams]);
 
   if (loading) {
     return (
@@ -89,7 +73,7 @@ export default function BitrixSettingsPage() {
             <ArrowLeft className="mr-1 h-4 w-4" />
             Voltar
           </Button>
-          <h1 className="text-lg font-semibold">Configurações - {domain}</h1>
+          <h1 className="text-lg font-semibold">Configurações{domain ? ` - ${domain}` : ''}</h1>
         </div>
 
         {companyId ? (
@@ -105,7 +89,7 @@ export default function BitrixSettingsPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Para configurar a integração, primeiro faça login na plataforma MicroSip Connector
-                e vincule o portal <strong>{domain}</strong> à sua empresa nas configurações.
+                e vincule o portal{domain ? ` ${domain}` : ''} à sua empresa nas configurações.
               </p>
             </CardContent>
           </Card>
