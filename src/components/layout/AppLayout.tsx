@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
+import { useBitrixUserId } from '@/hooks/useBitrixUserId';
+import { useSipAccounts } from '@/hooks/useSipAccounts';
+import { Softphone } from '@/components/softphone/Softphone';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,6 +27,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { currentCompany } = useCompany();
+  const bitrixUserId = useBitrixUserId();
+  const { defaultAccount } = useSipAccounts(currentCompany?.id);
   useBitrixRealtimeEvents();
 
   return (
@@ -88,6 +93,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           })}
         </nav>
       </div>
+      <Softphone sipAccount={defaultAccount ?? null} bitrixUserId={bitrixUserId} />
     </div>
   );
 }
