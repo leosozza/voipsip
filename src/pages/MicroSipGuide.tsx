@@ -187,11 +187,14 @@ export default function MicroSipGuide() {
                   <Separator />
                   <div className="space-y-2 text-sm">
                     {[
-                      { label: 'SIP Server', value: defaultAccount?.sip_server, fallback: 'ex: sip.vivo.com.br' },
-                      { label: 'Username', value: defaultAccount?.sip_username, fallback: 'seu usuário SIP' },
-                      { label: 'Password', value: '••••••••', fallback: 'sua senha SIP' },
-                      { label: 'Domain', value: defaultAccount?.sip_domain || defaultAccount?.sip_server, fallback: 'mesmo que o server' },
-                      { label: 'Transport', value: 'UDP', fallback: 'UDP' },
+                      { label: 'Nome de Exibição', value: defaultAccount?.display_name, fallback: 'seu nome' },
+                      { label: 'Servidor SIP', value: defaultAccount?.sip_server, fallback: 'ex: sip.seuprovedor.com.br' },
+                      { label: 'Proxy SIP', value: defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
+                      { label: 'Usuário', value: defaultAccount?.sip_username, fallback: 'seu usuário SIP' },
+                      { label: 'Login', value: defaultAccount?.sip_username, fallback: 'mesmo que Usuário' },
+                      { label: 'Domínio', value: defaultAccount?.sip_domain || defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
+                      { label: 'Senha', value: '••••••••', fallback: 'sua senha SIP' },
+                      { label: 'Transporte', value: 'UDP', fallback: 'UDP' },
                     ].map((field) => (
                       <div key={field.label} className="flex items-center justify-between gap-2">
                         <span className="text-muted-foreground">{field.label}:</span>
