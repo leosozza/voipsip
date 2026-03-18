@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Instalação VoIP SIP</title>
+  <title>Instalação MicroSip Connector</title>
   <script src="https://api.bitrix24.com/api/v1/"></script>
   <style>
     body {
