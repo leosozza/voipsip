@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { BitrixSettings } from '@/components/settings/BitrixSettings';
 import { BitrixSipLines } from '@/components/bitrix/BitrixSipLines';
+import { BitrixUserMappings } from '@/components/bitrix/BitrixUserMappings';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
