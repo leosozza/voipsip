@@ -1,1 +1,7 @@
 project_id = "tequeyzhsixypnvevuiu"
+
+[functions.bitrix-install]
+verify_jwt = false
+
+[functions.bitrix-events]
+verify_jwt = false

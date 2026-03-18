@@ -6,28 +6,56 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BitrixSettings } from '@/components/settings/BitrixSettings';
 
+
+
+function loadBX24Script(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.BX24) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = '//api.bitrix24.com/api/v1/';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load BX24 SDK'));
+    document.head.appendChild(script);
+  });
+}
+
 export default function BitrixSettingsPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
-
-  const domain = searchParams.get('DOMAIN') || '';
-  const memberId = searchParams.get('member_id') || '';
+  const [domain, setDomain] = useState(searchParams.get('DOMAIN') || '');
+  const [memberId, setMemberId] = useState(searchParams.get('member_id') || '');
 
   useEffect(() => {
-    async function loadInstallation() {
-      if (!memberId) {
-        setLoading(false);
-        return;
+    async function init() {
+      let d = domain;
+      let m = memberId;
+
+      try {
+        await loadBX24Script();
+        await new Promise<void>((resolve) => {
+          window.BX24?.init(() => {
+            window.BX24?.fitWindow();
+            const auth = window.BX24?.getAuth();
+            if (auth) {
+              if (!d) { d = auth.domain; setDomain(d); }
+              if (!m) { m = auth.member_id; setMemberId(m); }
+            }
+            resolve();
+          });
+        });
+      } catch {
+        // SDK not available
       }
+
+      if (!m) { setLoading(false); return; }
 
       try {
         const { data } = await supabase
           .from('bitrix_installations')
           .select('company_id')
-          .eq('member_id', memberId)
+          .eq('member_id', m)
           .maybeSingle();
-
         setCompanyId(data?.company_id || null);
       } catch {
         // ignore
@@ -36,8 +64,8 @@ export default function BitrixSettingsPage() {
       }
     }
 
-    loadInstallation();
-  }, [memberId]);
+    init();
+  }, []);
 
   if (loading) {
     return (
