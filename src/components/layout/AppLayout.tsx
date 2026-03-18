@@ -27,6 +27,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { currentCompany } = useCompany();
+  const bitrixUserId = useBitrixUserId();
+  const { defaultAccount } = useSipAccounts(currentCompany?.id);
   useBitrixRealtimeEvents();
 
   return (
