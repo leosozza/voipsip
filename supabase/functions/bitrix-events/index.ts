@@ -17,7 +17,6 @@ async function bitrixApi(domain: string, token: string, method: string, params: 
 }
 
 async function getTokenForCompany(supabase: any, companyId: string) {
-  // Try bitrix_credentials first
   const { data: creds } = await supabase
     .from("bitrix_credentials")
     .select("bitrix_domain, access_token")
@@ -28,7 +27,6 @@ async function getTokenForCompany(supabase: any, companyId: string) {
     return { domain: creds.bitrix_domain, token: creds.access_token };
   }
 
-  // Fallback to bitrix_installations
   const { data: install } = await supabase
     .from("bitrix_installations")
     .select("domain, access_token")
@@ -40,6 +38,98 @@ async function getTokenForCompany(supabase: any, companyId: string) {
   }
 
   return null;
+}
+
+async function getUserMapping(supabase: any, companyId: string, bitrixUserId: string) {
+  if (!bitrixUserId) return null;
+  const { data } = await supabase
+    .from("bitrix_user_mappings")
+    .select("id, sip_account_id, inner_number, bitrix_user_name")
+    .eq("company_id", companyId)
+    .eq("bitrix_user_id", bitrixUserId)
+    .maybeSingle();
+  return data;
+}
+
+async function getSipAccount(supabase: any, sipAccountId: string) {
+  if (!sipAccountId) return null;
+  const { data } = await supabase
+    .from("sip_accounts")
+    .select("id, sip_server, sip_domain, display_name")
+    .eq("id", sipAccountId)
+    .maybeSingle();
+  return data;
+}
+
+async function processCallEvent(
+  supabase: any,
+  companyId: string,
+  eventId: string,
+  eventType: string,
+  phoneNumber: string,
+  bitrixUserId: string | null,
+  callId: string | null,
+  direction: "inbound" | "outbound"
+) {
+  const mapping = bitrixUserId ? await getUserMapping(supabase, companyId, bitrixUserId) : null;
+  const tokenInfo = await getTokenForCompany(supabase, companyId);
+
+  if (!tokenInfo) {
+    console.error("No token found for company:", companyId);
+    return;
+  }
+
+  // Register the call in Bitrix24 with correct user
+  const registerParams: Record<string, any> = {
+    PHONE_NUMBER: phoneNumber,
+    USER_ID: bitrixUserId || 1,
+    TYPE: direction === "outbound" ? 1 : 2,
+    SHOW: 1,
+    CRM_CREATE: 1,
+    LINE_NUMBER: phoneNumber,
+    CALL_START_DATE: new Date().toISOString(),
+  };
+
+  if (mapping?.inner_number) {
+    registerParams.USER_PHONE_INNER = mapping.inner_number;
+  }
+
+  const registerResult = await bitrixApi(
+    tokenInfo.domain,
+    tokenInfo.token,
+    "telephony.externalcall.register",
+    registerParams
+  );
+
+  console.log(`Register result for ${eventType}:`, JSON.stringify(registerResult));
+
+  const bitrixCallId = registerResult?.result?.CALL_ID || callId;
+
+  // Create call_log entry
+  const { error: logError } = await supabase.from("call_logs").insert({
+    company_id: companyId,
+    phone_number: phoneNumber,
+    direction,
+    status: "ringing",
+    user_mapping_id: mapping?.id || null,
+    bitrix_call_id: bitrixCallId,
+    caller_name: mapping?.bitrix_user_name || null,
+    call_started_at: new Date().toISOString(),
+  });
+
+  if (logError) {
+    console.error("Error inserting call_log:", logError);
+  }
+
+  // Update event status
+  await supabase
+    .from("bitrix_events")
+    .update({
+      status: "processed",
+      processed_at: new Date().toISOString(),
+      call_id: bitrixCallId,
+    })
+    .eq("id", eventId);
 }
 
 Deno.serve(async (req) => {
@@ -90,7 +180,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract fields from Bitrix24 event data
+    // Extract fields
     const phoneNumber = eventData["data[PHONE_NUMBER]"] || eventData.PHONE_NUMBER || null;
     const bitrixUserId = eventData["data[USER_ID]"] || eventData.USER_ID || null;
     const callId = eventData["data[CALL_ID]"] || eventData.CALL_ID || null;
@@ -124,37 +214,24 @@ Deno.serve(async (req) => {
 
     console.log(`Evento ${eventType} recebido para company ${companyId}: phone=${phoneNumber}, user=${bitrixUserId}`);
 
-    // Process OnExternalCallStart: register the call with SHOW=1
+    // Process call events with user mapping lookup
     if (eventType === "ONEXTERNALCALLSTART" && phoneNumber) {
       try {
-        const tokenInfo = await getTokenForCompany(supabase, companyId);
-        if (tokenInfo) {
-          const registerResult = await bitrixApi(tokenInfo.domain, tokenInfo.token, "telephony.externalcall.register", {
-            PHONE_NUMBER: phoneNumber,
-            USER_ID: bitrixUserId || 1,
-            TYPE: 1, // outgoing
-            SHOW: 1, // show call card in CRM (mandatory)
-            CRM_CREATE: 1,
-            LINE_NUMBER: phoneNumber,
-            CALL_START_DATE: new Date().toISOString(),
-          });
-
-          console.log("Register result for OnExternalCallStart:", JSON.stringify(registerResult));
-
-          // Update event status
-          await supabase
-            .from("bitrix_events")
-            .update({
-              status: "processed",
-              processed_at: new Date().toISOString(),
-              call_id: registerResult?.result?.CALL_ID || callId,
-            })
-            .eq("id", insertedEvent.id);
-        } else {
-          console.error("No token found for company:", companyId);
-        }
+        await processCallEvent(
+          supabase, companyId, insertedEvent.id,
+          eventType, phoneNumber, bitrixUserId, callId, "outbound"
+        );
       } catch (procError) {
         console.error("Error processing OnExternalCallStart:", procError);
+      }
+    } else if (eventType === "ONEXTERNALCALLBACKSTART" && phoneNumber) {
+      try {
+        await processCallEvent(
+          supabase, companyId, insertedEvent.id,
+          eventType, phoneNumber, bitrixUserId, callId, "inbound"
+        );
+      } catch (procError) {
+        console.error("Error processing OnExternalCallBackStart:", procError);
       }
     }
 
