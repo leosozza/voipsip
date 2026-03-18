@@ -76,7 +76,7 @@ export default function BitrixSettingsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Para configurar a integração, primeiro faça login na plataforma VoIP SIP
+                Para configurar a integração, primeiro faça login na plataforma MicroSip Connector
                 e vincule o portal <strong>{domain}</strong> à sua empresa nas configurações.
               </p>
             </CardContent>

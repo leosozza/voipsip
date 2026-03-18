@@ -94,7 +94,7 @@ export default function BitrixApp() {
                 {!status.companyLinked && (
                   <p className="text-sm text-muted-foreground">
                     Para vincular este portal a uma empresa, acesse as Configurações do aplicativo
-                    e faça login na plataforma VoIP SIP.
+                    e faça login na plataforma MicroSip Connector.
                   </p>
                 )}
               </div>

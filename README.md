@@ -1,6 +1,6 @@
-# Api4Com Connector para Bitrix24
+# MicroSip Connector para Bitrix24
 
-Conector de telefonia que integra o sistema Api4Com WebPhone com o Bitrix24 CRM, permitindo Click-to-Call, registro automático de chamadas e identificação de contatos.
+Conector de telefonia que integra o MicroSip com o Bitrix24 CRM, permitindo Click-to-Call, registro automático de chamadas e identificação de contatos.
 
 ## Desenvolvedor
 
@@ -25,7 +25,7 @@ Website: [thoth24.com.br](https://thoth24.com.br)
 
 ## Visão Geral
 
-Este conector permite que empresas utilizem o sistema de telefonia Api4Com diretamente integrado ao Bitrix24 CRM, sem necessidade do SIP nativo do Bitrix. O sistema é **multi-tenant**, permitindo que múltiplas empresas configurem suas próprias credenciais.
+Este conector permite que empresas utilizem o MicroSip diretamente integrado ao Bitrix24 CRM, sem necessidade do SIP nativo do Bitrix. O sistema é **multi-tenant**, permitindo que múltiplas empresas configurem suas próprias credenciais.
 
 ### Principais Benefícios
 
@@ -55,16 +55,16 @@ Este conector permite que empresas utilizem o sistema de telefonia Api4Com diret
 │                        SUPABASE (Backend)                            │
 │                                                                      │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ bitrix24-webhook │  │ api4com-webhook  │  │  bitrix24-handler│   │
-│  │  (Click-to-Call) │  │ (Call Events)    │  │  (Install/Config)│   │
+│  │ bitrix-events    │  │ bitrix-sync      │  │  bitrix-install  │   │
+│  │  (Webhooks)      │  │ (Call Sync)      │  │  (Install/Config)│   │
 │  └────────┬─────────┘  └────────▲─────────┘  └──────────────────┘   │
 │           │                     │                                    │
 │           │    ┌────────────────┴────────────────┐                  │
 │           │    │         BANCO DE DADOS          │                  │
 │           │    │  - companies                    │                  │
-│           │    │  - bitrix24_credentials         │                  │
-│           │    │  - api4com_credentials          │                  │
-│           │    │  - user_mappings                │                  │
+│           │    │  - bitrix_credentials            │                  │
+│           │    │  - bitrix_installations          │                  │
+│           │    │  - sip_accounts                  │                  │
 │           │    │  - call_logs                    │                  │
 │           │    │  - external_phone_lines         │                  │
 │           │    └─────────────────────────────────┘                  │
@@ -73,10 +73,10 @@ Este conector permite que empresas utilizem o sistema de telefonia Api4Com diret
             │
             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         API4COM WEBPHONE                             │
+│                           MICROSIP                                   │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐  │
-│  │   Dialer    │  │  Webhooks   │  │       Integrações           │  │
-│  │   API       │  │   v1.4      │  │    (bitrix24-connector)     │  │
+│  │   SIP       │  │  WebRTC     │  │       Configuração          │  │
+│  │   Client    │  │  Softphone  │  │    (Contas SIP)             │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -99,15 +99,15 @@ Este conector permite que empresas utilizem o sistema de telefonia Api4Com diret
 Quando o usuário clica em um número no Bitrix24:
 
 1. Bitrix24 dispara evento `ONEXTERNALCALLSTART` para nosso webhook
-2. Webhook identifica o usuário e busca seu ramal Api4Com
-3. Chamada é originada via API Dialer da Api4Com
+2. Webhook identifica o usuário e busca sua conta SIP
+3. Chamada é originada via softphone MicroSip
 4. Telefone do agente toca primeiro, depois conecta ao destino
 
 ### 2. Popup de Chamadas Recebidas
 
 Quando uma chamada chega no ramal:
 
-1. Api4Com envia webhook `channel-create`
+1. Evento de chamada recebido
 2. Sistema identifica o ramal e busca usuário Bitrix correspondente
 3. Chama `telephony.externalcall.register` com `SHOW=1`
 4. Popup aparece no Bitrix24 com dados do contato
@@ -116,7 +116,7 @@ Quando uma chamada chega no ramal:
 
 Ao término de cada chamada:
 
-1. Api4Com envia webhook `channel-hangup`
+1. Evento de finalização recebido
 2. Sistema calcula duração e status (atendida/perdida)
 3. Chama `telephony.externalcall.finish` com dados da chamada
 4. Link de gravação é anexado à atividade do CRM
@@ -139,32 +139,28 @@ Ao término de cada chamada:
 │         │                                                             │
 │         ▼                                                             │
 │  ┌─────────────────────────────────────────────────────────────┐     │
-│  │ bitrix24-install                                             │     │
+│  │ bitrix-install                                              │     │
 │  │  - Recebe ONAPPINSTALL com tokens OAuth                     │     │
-│  │  - Cria empresa no banco (ou reutiliza existente)           │     │
-│  │  - Salva credenciais Bitrix24 (domain, access_token)        │     │
-│  │  - Registra eventos de telefonia                            │     │
-│  │  - Registra linha externa                                   │     │
-│  │  - Define linha como padrão para saída                      │     │
+│  │  - Salva instalação (domain, member_id, tokens)             │     │
+│  │  - Exibe página de sucesso com BX24.installFinish()         │     │
 │  └─────────────────────────────────────────────────────────────┘     │
 │         │                                                             │
 │         ▼                                                             │
-│  Usuário é redirecionado para interface de configuração              │
+│  Usuário é redirecionado para interface do app no iframe             │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────┐
-│  2. CONFIGURAÇÃO DO TOKEN API4COM                                     │
+│  2. CONFIGURAÇÃO                                                      │
 │                                                                       │
-│  Usuário insere token da Api4Com na interface                        │
+│  Usuário configura contas SIP e linhas externas                      │
 │         │                                                             │
 │         ▼                                                             │
 │  ┌─────────────────────────────────────────────────────────────┐     │
-│  │ api4com-setup                                                │     │
-│  │  - Valida token via GET /integrations                       │     │
-│  │  - Extrai domínio e ramal do usuário                        │     │
-│  │  - Configura webhook na Api4Com                             │     │
-│  │  - Cria mapeamento automático usuário ↔ ramal               │     │
-│  │  - Salva credenciais no banco                               │     │
+│  │ Página de Settings (/bitrix/settings)                       │     │
+│  │  - Vincula portal à empresa na plataforma                   │     │
+│  │  - Configura contas SIP para softphone                      │     │
+│  │  - Registra linhas externas no Bitrix24                     │     │
+│  │  - Vincula eventos de telefonia                             │     │
 │  └─────────────────────────────────────────────────────────────┘     │
 │         │                                                             │
 │         ▼                                                             │
@@ -174,7 +170,7 @@ Ao término de cada chamada:
 
 ### Auto-Vinculação de Tenant
 
-O sistema detecta automaticamente o `member_id` do portal Bitrix24 e vincula usuários à empresa correspondente. Isso permite:
+O sistema detecta automaticamente o `member_id` do portal Bitrix24 e vincula à empresa correspondente. Isso permite:
 
 - Múltiplos usuários do mesmo portal compartilham a mesma configuração
 - Não é necessário criar empresa manualmente
@@ -187,34 +183,25 @@ O sistema detecta automaticamente o `member_id` do portal Bitrix24 e vincula usu
 ### Chamada de Saída (Click-to-Call)
 
 ```
-Bitrix24                    Backend                         Api4Com
+Bitrix24                    Backend                         MicroSip
    │                           │                               │
    │ 1. Click no número        │                               │
    │──────────────────────────►│                               │
    │   ONEXTERNALCALLSTART     │                               │
    │                           │ 2. Busca mapeamento           │
-   │                           │    usuário → ramal            │
+   │                           │    usuário → conta SIP        │
    │                           │                               │
-   │                           │ 3. POST /dialer               │
+   │                           │ 3. Origina chamada            │
    │                           │──────────────────────────────►│
    │                           │                               │
-   │                           │ 4. Chamada originada          │
-   │                           │◄──────────────────────────────│
-   │                           │                               │
-   │                           │ 5. channel-create webhook     │
-   │                           │◄──────────────────────────────│
-   │                           │                               │
-   │ 6. register (TYPE=1)      │                               │
+   │ 4. register (TYPE=1)      │                               │
    │◄──────────────────────────│                               │
    │   (Atualiza status)       │                               │
    │                           │                               │
-   │                           │ 7. channel-answer webhook     │
+   │                           │ 5. Chamada finalizada         │
    │                           │◄──────────────────────────────│
    │                           │                               │
-   │                           │ 8. channel-hangup webhook     │
-   │                           │◄──────────────────────────────│
-   │                           │                               │
-   │ 9. finish                 │                               │
+   │ 6. finish                 │                               │
    │◄──────────────────────────│                               │
    │   (Registra no CRM)       │                               │
 ```
@@ -222,10 +209,9 @@ Bitrix24                    Backend                         Api4Com
 ### Chamada Recebida (Inbound)
 
 ```
-Api4Com                     Backend                         Bitrix24
+MicroSip                    Backend                         Bitrix24
    │                           │                               │
-   │ 1. channel-create         │                               │
-   │   (direction: inbound)    │                               │
+   │ 1. Chamada recebida       │                               │
    │──────────────────────────►│                               │
    │                           │ 2. Identifica ramal           │
    │                           │    Busca usuário Bitrix       │
@@ -236,16 +222,12 @@ Api4Com                     Backend                         Bitrix24
    │                           │              4. Popup aparece │
    │                           │                  com CRM card │
    │                           │                               │
-   │ 5. channel-answer         │                               │
+   │ 5. Chamada finalizada     │                               │
    │──────────────────────────►│                               │
-   │                           │ 6. Atualiza status            │
-   │                           │                               │
-   │ 7. channel-hangup         │                               │
-   │──────────────────────────►│                               │
-   │                           │ 8. finish                     │
+   │                           │ 6. finish                     │
    │                           │──────────────────────────────►│
    │                           │                               │
-   │                           │         9. Atividade criada   │
+   │                           │         7. Atividade criada   │
    │                           │            com gravação       │
 ```
 
@@ -255,78 +237,11 @@ Api4Com                     Backend                         Bitrix24
 
 | Função | Propósito | JWT |
 |--------|-----------|-----|
-| `bitrix24-install` | Processa instalação do app (ONAPPINSTALL) | ❌ |
-| `bitrix24-handler` | Ponto de entrada unificado para Bitrix24 | ❌ |
-| `bitrix24-webhook` | Recebe eventos Click-to-Call | ❌ |
-| `api4com-webhook` | Recebe eventos de chamada da Api4Com | ❌ |
-| `api4com-setup` | Configura integração Api4Com | ❌ |
-| `create-company` | Cria empresa no sistema | ❌ |
-| `link-user-to-company` | Vincula usuário anônimo à empresa | ❌ |
-| `sync-bitrix-users` | Sincroniza usuários do Bitrix24 | ❌ |
-| `register-external-line` | Registra linha telefônica no Bitrix | ❌ |
-| `register-telephony-events` | Configura eventos de telefonia | ❌ |
-| `set-outgoing-line` | Define linha padrão para saída | ❌ |
-| `diagnose-telephony` | Diagnóstico de problemas | ❌ |
-| `check-user-phone` | Verifica configuração de telefone | ❌ |
-| `test-connection` | Testa conectividade | ❌ |
-
-### Detalhes das Principais Funções
-
-#### `bitrix24-install`
-
-Executada quando o app é instalado:
-
-1. Recebe evento `ONAPPINSTALL` com tokens OAuth
-2. Cria ou reutiliza empresa baseada no `member_id`
-3. Salva `access_token` e `refresh_token`
-4. Registra eventos: `ONEXTERNALCALLSTART`, `ONEXTERNALCALLBACKSTART`
-5. Adiciona linha externa via `telephony.externalLine.add`
-6. Configura linha como padrão via `voximplant.line.outgoing.set`
-7. Chama `BX24.installFinish()` para finalizar
-
-#### `api4com-webhook`
-
-Recebe webhooks v1.4 da Api4Com:
-
-```typescript
-interface Api4ComWebhookV14 {
-  version: string;
-  eventType: 'channel-create' | 'channel-answer' | 'channel-hangup';
-  id: string;
-  domain: string;
-  direction: 'inbound' | 'outbound';
-  caller: string;
-  called: string;
-  startedAt: string;
-  answeredAt?: string;
-  endedAt: string;
-  duration: number;
-  hangupCause: string;
-  recordUrl?: string;
-  metadata?: {
-    gateway?: string;
-    companyId?: string;
-    bitrixUserId?: string;
-  };
-}
-```
-
-Mapeamento de eventos:
-
-| Evento Api4Com | Ação Bitrix24 |
-|----------------|---------------|
-| `channel-create` | `telephony.externalcall.register` |
-| `channel-answer` | Atualiza status no banco |
-| `channel-hangup` | `telephony.externalcall.finish` |
-
-#### `bitrix24-webhook`
-
-Recebe eventos do Bitrix24:
-
-- `ONEXTERNALCALLSTART`: Click-to-Call iniciado
-  - Busca mapeamento usuário → ramal
-  - Origina chamada via Api4Com Dialer
-  - Cria registro no `call_logs`
+| `bitrix-install` | Processa instalação do app (ONAPPINSTALL) | ❌ |
+| `bitrix-sync` | Sincronização de chamadas com Bitrix24 | ❌ |
+| `bitrix-events` | Recebe webhooks de eventos Bitrix24 | ❌ |
+| `bitrix-oauth-callback` | Callback OAuth Bitrix24 | ❌ |
+| `bitrix-client-id` | Retorna Client ID para OAuth | ❌ |
 
 ---
 
@@ -339,7 +254,6 @@ Recebe eventos do Bitrix24:
 CREATE TABLE companies (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
-  bitrix_member_id TEXT UNIQUE,  -- ID único do portal Bitrix
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
@@ -348,44 +262,48 @@ CREATE TABLE companies (
 CREATE TABLE company_members (
   id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies,
-  user_id UUID,  -- ID do usuário anônimo
-  role TEXT,     -- 'admin' ou 'member'
+  user_id UUID,
+  role TEXT,
   created_at TIMESTAMPTZ
 );
 
 -- Credenciais Bitrix24
-CREATE TABLE bitrix24_credentials (
+CREATE TABLE bitrix_credentials (
   id UUID PRIMARY KEY,
   company_id UUID UNIQUE REFERENCES companies,
-  domain TEXT NOT NULL,           -- ex: empresa.bitrix24.com.br
-  member_id TEXT,                 -- ID do portal
-  access_token TEXT NOT NULL,     -- Token OAuth
+  bitrix_domain TEXT NOT NULL,
+  access_token TEXT,
   refresh_token TEXT,
-  client_endpoint TEXT,           -- URL da API REST
-  webhook_url TEXT,
   expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
 
--- Credenciais Api4Com
-CREATE TABLE api4com_credentials (
+-- Instalações Bitrix24
+CREATE TABLE bitrix_installations (
   id UUID PRIMARY KEY,
-  company_id UUID UNIQUE REFERENCES companies,
-  api_token TEXT NOT NULL,
-  api4com_domain TEXT,            -- Domínio da conta
-  webhook_configured BOOLEAN,     -- Se webhook foi configurado
+  member_id TEXT UNIQUE NOT NULL,
+  domain TEXT NOT NULL,
+  company_id UUID REFERENCES companies,
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
 
--- Mapeamento Ramal ↔ Usuário Bitrix
-CREATE TABLE user_mappings (
+-- Contas SIP
+CREATE TABLE sip_accounts (
   id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies,
-  api4com_extension TEXT NOT NULL,  -- Ramal Api4Com (ex: "1001")
-  bitrix24_user_id TEXT NOT NULL,   -- ID do usuário no Bitrix
-  user_name TEXT,                   -- Nome para exibição
+  display_name TEXT,
+  sip_server TEXT NOT NULL,
+  sip_username TEXT NOT NULL,
+  sip_password TEXT NOT NULL,
+  sip_domain TEXT,
+  ws_port INTEGER,
+  transport TEXT,
+  is_default BOOLEAN,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
@@ -394,9 +312,9 @@ CREATE TABLE user_mappings (
 CREATE TABLE external_phone_lines (
   id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies,
-  line_number TEXT NOT NULL,   -- Número no formato +55...
-  line_name TEXT,              -- Nome da linha
-  is_default BOOLEAN,          -- Se é a linha padrão
+  line_number TEXT NOT NULL,
+  line_name TEXT,
+  is_default BOOLEAN,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
@@ -405,44 +323,34 @@ CREATE TABLE external_phone_lines (
 CREATE TABLE call_logs (
   id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies,
-  user_mapping_id UUID REFERENCES user_mappings,
   external_line_id UUID REFERENCES external_phone_lines,
-  direction TEXT,              -- 'inbound' ou 'outbound'
+  direction TEXT,
   phone_number TEXT NOT NULL,
-  status TEXT,                 -- 'ringing', 'answered', 'missed', etc.
+  status TEXT,
   duration_seconds INTEGER,
   recording_url TEXT,
-  bitrix_call_id TEXT,         -- ID da chamada no Bitrix
-  api4com_call_id TEXT,        -- ID da chamada na Api4Com
+  sip_call_id TEXT,
   caller_name TEXT,
   call_started_at TIMESTAMPTZ,
   call_ended_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ
 );
-```
 
-### Diagrama ER
-
-```
-┌──────────────┐      ┌───────────────────┐      ┌───────────────────┐
-│  companies   │──────│ bitrix24_creds    │      │ api4com_creds     │
-│              │      │                   │      │                   │
-│ id           │◄─────│ company_id        │      │ company_id        │
-│ name         │      │ domain            │      │ api_token         │
-│ member_id    │      │ access_token      │      │ api4com_domain    │
-└──────┬───────┘      └───────────────────┘      └───────────────────┘
-       │
-       │
-       ├──────────────────┬──────────────────┐
-       │                  │                  │
-       ▼                  ▼                  ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│ user_mappings│   │ phone_lines  │   │ call_logs    │
-│              │   │              │   │              │
-│ company_id   │   │ company_id   │   │ company_id   │
-│ extension    │   │ line_number  │   │ direction    │
-│ bitrix_user  │   │ is_default   │   │ status       │
-└──────────────┘   └──────────────┘   └──────────────┘
+-- Eventos Bitrix24
+CREATE TABLE bitrix_events (
+  id UUID PRIMARY KEY,
+  company_id UUID REFERENCES companies,
+  event_type TEXT NOT NULL,
+  status TEXT,
+  phone_number TEXT,
+  bitrix_user_id TEXT,
+  call_id TEXT,
+  crm_entity_type TEXT,
+  crm_entity_id TEXT,
+  raw_data JSONB,
+  processed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ
+);
 ```
 
 ---
@@ -455,9 +363,9 @@ Configure no Marketplace do Bitrix24:
 
 | Campo | URL |
 |-------|-----|
-| **Application URL** | `https://[SUPABASE_URL]/functions/v1/bitrix24-handler?action=settings` |
-| **Initial install path** | `https://[SUPABASE_URL]/functions/v1/bitrix24-handler?action=install` |
-| **Settings path** | `https://[SUPABASE_URL]/functions/v1/bitrix24-handler?action=settings` |
+| **Initial install path** | `https://[SUPABASE_URL]/functions/v1/bitrix-install` |
+| **Application URL** | `https://voipsip.lovable.app/bitrix/app` |
+| **Settings path** | `https://voipsip.lovable.app/bitrix/settings` |
 
 ### Permissões Necessárias
 
@@ -485,6 +393,7 @@ Configure no Marketplace do Bitrix24:
 | shadcn/ui | - | Componentes UI |
 | React Query | 5.x | Cache e fetch |
 | React Router | 6.x | Roteamento |
+| sip.js | 0.21 | Softphone WebRTC |
 
 ### Backend
 
@@ -496,10 +405,9 @@ Configure no Marketplace do Bitrix24:
 
 ### Integrações
 
-| API | Versão | Documentação |
-|-----|--------|--------------|
-| Bitrix24 REST API | - | [rest.bitrix24.com](https://training.bitrix24.com/rest_help/) |
-| Api4Com WebPhone | v1.4 | Documentação interna |
+| API | Documentação |
+|-----|--------------|
+| Bitrix24 REST API | [rest.bitrix24.com](https://training.bitrix24.com/rest_help/) |
 
 ---
 
@@ -509,18 +417,13 @@ Configure no Marketplace do Bitrix24:
 ├── src/
 │   ├── components/
 │   │   ├── auth/           # Componentes de autenticação
-│   │   ├── calls/          # Tabela de logs de chamadas
+│   │   ├── calls/          # Tabela de logs e click-to-call
 │   │   ├── dashboard/      # Métricas e gráficos
 │   │   ├── layout/         # Layout principal
-│   │   ├── setup/          # Wizard de configuração
+│   │   ├── settings/       # Configurações Bitrix24
+│   │   ├── softphone/      # Softphone WebRTC
 │   │   └── ui/             # Componentes shadcn/ui
-│   ├── contexts/           # Context providers
 │   ├── hooks/              # Custom hooks
-│   │   ├── useAuth.ts
-│   │   ├── useBitrix.ts
-│   │   ├── useCallLogs.ts
-│   │   ├── useCompany.ts
-│   │   └── ...
 │   ├── integrations/
 │   │   └── supabase/       # Cliente Supabase
 │   ├── pages/              # Páginas da aplicação
@@ -528,11 +431,11 @@ Configure no Marketplace do Bitrix24:
 │
 ├── supabase/
 │   ├── functions/          # Edge Functions
-│   │   ├── api4com-setup/
-│   │   ├── api4com-webhook/
-│   │   ├── bitrix24-handler/
-│   │   ├── bitrix24-install/
-│   │   ├── bitrix24-webhook/
+│   │   ├── bitrix-install/
+│   │   ├── bitrix-sync/
+│   │   ├── bitrix-events/
+│   │   ├── bitrix-client-id/
+│   │   ├── bitrix-oauth-callback/
 │   │   └── ...
 │   └── config.toml         # Configuração Supabase
 │
