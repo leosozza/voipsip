@@ -155,7 +155,7 @@ export default function MicroSipGuide() {
             <Alert>
               <Monitor className="h-4 w-4" />
               <AlertDescription>
-                <strong>Importante:</strong> Baixe a versão <strong>com codec</strong> (installer completo). A versão "lite" pode não ter codecs necessários para o trunk da Vivo.
+                <strong>Importante:</strong> Baixe a versão <strong>com codec</strong> (installer completo). A versão "lite" pode não ter codecs necessários para seu provedor SIP.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -187,11 +187,14 @@ export default function MicroSipGuide() {
                   <Separator />
                   <div className="space-y-2 text-sm">
                     {[
-                      { label: 'SIP Server', value: defaultAccount?.sip_server, fallback: 'ex: sip.vivo.com.br' },
-                      { label: 'Username', value: defaultAccount?.sip_username, fallback: 'seu usuário SIP' },
-                      { label: 'Password', value: '••••••••', fallback: 'sua senha SIP' },
-                      { label: 'Domain', value: defaultAccount?.sip_domain || defaultAccount?.sip_server, fallback: 'mesmo que o server' },
-                      { label: 'Transport', value: 'UDP', fallback: 'UDP' },
+                      { label: 'Nome de Exibição', value: defaultAccount?.display_name, fallback: 'seu nome' },
+                      { label: 'Servidor SIP', value: defaultAccount?.sip_server, fallback: 'ex: sip.seuprovedor.com.br' },
+                      { label: 'Proxy SIP', value: defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
+                      { label: 'Usuário', value: defaultAccount?.sip_username, fallback: 'seu usuário SIP' },
+                      { label: 'Login', value: defaultAccount?.sip_username, fallback: 'mesmo que Usuário' },
+                      { label: 'Domínio', value: defaultAccount?.sip_domain || defaultAccount?.sip_server, fallback: 'mesmo que Servidor SIP' },
+                      { label: 'Senha', value: '••••••••', fallback: 'sua senha SIP' },
+                      { label: 'Transporte', value: 'UDP', fallback: 'UDP' },
                     ].map((field) => (
                       <div key={field.label} className="flex items-center justify-between gap-2">
                         <span className="text-muted-foreground">{field.label}:</span>
@@ -335,7 +338,7 @@ export default function MicroSipGuide() {
               {[
                 {
                   q: 'MicroSIP não registra (ícone vermelho)',
-                  a: 'Verifique servidor, usuário e senha. Confirme que a porta 5060/UDP está liberada no firewall. Trunks da Vivo podem exigir IP fixo autorizado.',
+                  a: 'Verifique servidor, usuário e senha. Confirme que a porta 5060/UDP está liberada no firewall. Alguns provedores SIP exigem IP fixo autorizado.',
                 },
                 {
                   q: 'Clicar em "Ligar" não abre o MicroSIP',

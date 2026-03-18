@@ -1,31 +1,44 @@
 
+# Conformidade Bitrix24 Telephony - Plano de Implementação
 
-## Plano: Tornar o guia MicroSIP genérico + campos em português
+## Status: CONCLUÍDO
 
-### Problema
-O guia atual referencia a Vivo como exemplo fixo e usa nomes de campos em inglês, quando na verdade o conector funciona com **qualquer operadora SIP** conectada ao MicroSIP.
+### ✅ Fase 1: Corrigir bitrix-sync
+- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
+- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
+- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
+- [x] Adicionar action `search_crm` (searchCrmEntities)
+- [x] Adicionar action `bind_events` / `unbind_events`
+- [x] Adicionar action `show_call_card` / `hide_call_card`
 
-### Alterações em `src/pages/MicroSipGuide.tsx`
+### ✅ Fase 2: Eventos obrigatórios
+- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
+- [x] Criar tabela `bitrix_events` com realtime habilitado
+- [x] RLS policies para a tabela
+- [x] Processar OnExternalCallStart com SHOW=1 (telephony.externalcall.register)
 
-**1. Remover referências específicas à Vivo:**
-- Linha 158: `"codecs necessários para o trunk da Vivo"` → `"codecs necessários para seu provedor SIP"`
-- Linha 190: fallback `"ex: sip.vivo.com.br"` → `"ex: sip.seuprovedor.com.br"`
-- Linha 338: `"Trunks da Vivo podem exigir IP fixo autorizado"` → `"Alguns provedores SIP exigem IP fixo autorizado"`
+### ✅ Fase 3: UI
+- [x] Seção "Linhas Externas" nas configurações
+- [x] Seção "Eventos Bitrix24" com bind/unbind
+- [x] Hook atualizado com todas as novas mutations
 
-**2. Traduzir labels dos campos para português (conforme interface real do MicroSIP):**
+### ✅ Fase 4: BX24.js SDK + Conformidade Marketplace
+- [x] Integrar BX24.js SDK em BitrixApp.tsx (init, fitWindow, getAuth)
+- [x] Integrar BX24.js SDK em BitrixSettingsPage.tsx
+- [x] Configurar verify_jwt=false para bitrix-install e bitrix-events
+- [x] OnExternalCallStart → register com SHOW=1
 
-| Atual (inglês) | Correto (português) |
+## Checklist Marketplace
+| Requisito | Status |
 |---|---|
-| SIP Server | Servidor SIP |
-| Username | Usuário |
-| Password | Senha |
-| Domain | Domínio |
-| Transport | Transporte |
+| Register incoming/outgoing calls | ✅ |
+| Pass incoming line number (Sales Intelligence) | ✅ |
+| Attach call recording | ✅ |
+| OnExternalCallStart handler (click2call + SHOW=1) | ✅ |
+| OnExternalCallBackStart handler | ✅ |
+| BX24.installFinish() na instalação | ✅ |
+| BX24.js SDK nas páginas iframe | ✅ |
 
-**3. Adicionar campos que faltam:**
-- **Nome de Exibição** → `display_name` da conta
-- **Proxy SIP** → mesmo que Servidor SIP (orientação)
-- **Login** → mesmo que Usuário
-
-Todas as alterações são no arquivo `src/pages/MicroSipGuide.tsx`, sem mudanças em backend ou banco.
-
+## Próximos passos
+- Integrar eventos recebidos com o softphone (realtime subscription)
+- Implementar flow completo de click-to-call (evento → discagem automática)
