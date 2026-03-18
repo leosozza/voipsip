@@ -53,6 +53,7 @@ export function useCallSync() {
       duration: number;
       statusCode: number; // 200=answered, 304=missed, 603=declined
       phoneNumber?: string;
+      recordingUrl?: string;
     }) => {
       if (!currentCompany?.id) return;
 
@@ -63,12 +64,33 @@ export function useCallSync() {
             action: 'finish',
             company_id: currentCompany.id,
             call_data: {
-              CALL_ID: params.bitrixCallId,
-              DURATION: params.duration,
-              STATUS_CODE: params.statusCode,
+              call_id: params.bitrixCallId,
+              duration: params.duration,
+              status_code: params.statusCode,
             },
           },
         });
+
+        // Attach recording if URL provided
+        if (params.recordingUrl && params.statusCode === 200) {
+          try {
+            await supabase.functions.invoke('bitrix-sync', {
+              body: {
+                action: 'attach_record',
+                company_id: currentCompany.id,
+                call_data: {
+                  call_id: params.bitrixCallId,
+                  recording_url: params.recordingUrl,
+                  filename: `call_${params.bitrixCallId}.mp3`,
+                },
+              },
+            });
+            console.log('Recording attached to Bitrix24 call:', params.bitrixCallId);
+          } catch (recErr) {
+            console.error('Error attaching recording:', recErr);
+            toast.error('Erro ao anexar gravação no Bitrix24');
+          }
+        }
 
         // Update local call_log
         const status =
@@ -78,13 +100,19 @@ export function useCallSync() {
               ? 'missed'
               : 'failed';
 
+        const updateData: Record<string, any> = {
+          status,
+          duration_seconds: params.duration,
+          call_ended_at: new Date().toISOString(),
+        };
+
+        if (params.recordingUrl) {
+          updateData.recording_url = params.recordingUrl;
+        }
+
         await supabase
           .from('call_logs')
-          .update({
-            status,
-            duration_seconds: params.duration,
-            call_ended_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('bitrix_call_id', params.bitrixCallId);
       } catch (err) {
         console.error('Error finishing call:', err);
