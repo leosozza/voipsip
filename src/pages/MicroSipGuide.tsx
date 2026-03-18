@@ -155,7 +155,7 @@ export default function MicroSipGuide() {
             <Alert>
               <Monitor className="h-4 w-4" />
               <AlertDescription>
-                <strong>Importante:</strong> Baixe a versão <strong>com codec</strong> (installer completo). A versão "lite" pode não ter codecs necessários para o trunk da Vivo.
+                <strong>Importante:</strong> Baixe a versão <strong>com codec</strong> (installer completo). A versão "lite" pode não ter codecs necessários para seu provedor SIP.
               </AlertDescription>
             </Alert>
           </CardContent>
