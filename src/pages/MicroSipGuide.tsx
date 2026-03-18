@@ -338,7 +338,7 @@ export default function MicroSipGuide() {
               {[
                 {
                   q: 'MicroSIP não registra (ícone vermelho)',
-                  a: 'Verifique servidor, usuário e senha. Confirme que a porta 5060/UDP está liberada no firewall. Trunks da Vivo podem exigir IP fixo autorizado.',
+                  a: 'Verifique servidor, usuário e senha. Confirme que a porta 5060/UDP está liberada no firewall. Alguns provedores SIP exigem IP fixo autorizado.',
                 },
                 {
                   q: 'Clicar em "Ligar" não abre o MicroSIP',
