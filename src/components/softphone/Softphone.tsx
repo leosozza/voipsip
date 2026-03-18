@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Minimize2, Maximize2 } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { useCallSync } from '@/hooks/useCallSync';
 import type { SipAccount, SipRegistrationState, CallState } from '@/types/voip';
 
 interface SoftphoneProps {
   sipAccount: SipAccount | null;
+  bitrixUserId?: string;
   onCallStart?: (phoneNumber: string) => void;
   onCallEnd?: (duration: number) => void;
 }
@@ -19,7 +20,7 @@ const dialPad = [
   ['*', '0', '#'],
 ];
 
-export function Softphone({ sipAccount, onCallStart, onCallEnd }: SoftphoneProps) {
+export function Softphone({ sipAccount, bitrixUserId, onCallStart, onCallEnd }: SoftphoneProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [registrationState, setRegistrationState] = useState<SipRegistrationState>('unregistered');
   const [callState, setCallState] = useState<CallState>('idle');
@@ -27,23 +28,19 @@ export function Softphone({ sipAccount, onCallStart, onCallEnd }: SoftphoneProps
   const [isOnHold, setIsOnHold] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [currentBitrixCallId, setCurrentBitrixCallId] = useState<string | null>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const callStartTimeRef = useRef<number>(0);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const { registerCall, finishCall } = useCallSync();
 
-  // SIP.js registration
   useEffect(() => {
     if (!sipAccount) {
       setRegistrationState('unregistered');
       return;
     }
-
-    // For now, simulate registration — real SIP.js integration will connect here
     setRegistrationState('registering');
-    const timer = setTimeout(() => {
-      setRegistrationState('registered');
-    }, 1500);
-
+    const timer = setTimeout(() => setRegistrationState('registered'), 1500);
     return () => clearTimeout(timer);
   }, [sipAccount]);
 
@@ -64,32 +61,54 @@ export function Softphone({ sipAccount, onCallStart, onCallEnd }: SoftphoneProps
     return duration;
   }, []);
 
-  const handleCall = useCallback(() => {
+  const handleCall = useCallback(async () => {
     if (!phoneNumber.trim() || callState !== 'idle') return;
 
     setCallState('calling');
     onCallStart?.(phoneNumber);
 
-    // Simulate call being answered after 2 seconds
+    // Register in Bitrix24
+    const bitrixCallId = await registerCall({
+      phoneNumber,
+      direction: 'outbound',
+      bitrixUserId,
+    });
+    if (bitrixCallId) setCurrentBitrixCallId(bitrixCallId);
+
+    // Open SIP URI for external dialer
+    if (sipAccount) {
+      const domain = sipAccount.sip_domain || sipAccount.sip_server;
+      window.location.href = `sip:${phoneNumber}@${domain}`;
+    }
+
     setTimeout(() => {
       setCallState('answered');
       startCallTimer();
     }, 2000);
-  }, [phoneNumber, callState, onCallStart, startCallTimer]);
+  }, [phoneNumber, callState, onCallStart, startCallTimer, registerCall, bitrixUserId, sipAccount]);
 
-  const handleHangup = useCallback(() => {
+  const handleHangup = useCallback(async () => {
     const duration = stopCallTimer();
     setCallState('idle');
     setIsMuted(false);
     setIsOnHold(false);
     onCallEnd?.(duration);
-  }, [stopCallTimer, onCallEnd]);
+
+    if (currentBitrixCallId) {
+      await finishCall({
+        bitrixCallId: currentBitrixCallId,
+        duration,
+        statusCode: duration > 0 ? 200 : 603,
+        phoneNumber,
+      });
+      setCurrentBitrixCallId(null);
+    }
+  }, [stopCallTimer, onCallEnd, currentBitrixCallId, finishCall, phoneNumber]);
 
   const handleDialPadPress = useCallback((digit: string) => {
     if (callState === 'idle') {
       setPhoneNumber(prev => prev + digit);
     }
-    // In active call, send DTMF (to be implemented)
   }, [callState]);
 
   const formatDuration = (seconds: number) => {
