@@ -112,7 +112,7 @@ export function useBitrixRealtimeEvents() {
   }, [currentCompany?.id]);
 
   const handleFinishCall = useCallback(
-    async (statusCode: number = 200) => {
+    async (statusCode: number = 200, recordingUrl?: string) => {
       if (!activeCall?.bitrixCallId) return;
 
       const duration = Math.floor((Date.now() - activeCall.startTime) / 1000);
@@ -121,6 +121,7 @@ export function useBitrixRealtimeEvents() {
         duration,
         statusCode,
         phoneNumber: activeCall.phoneNumber,
+        recordingUrl,
       });
 
       setActiveCall(null);
