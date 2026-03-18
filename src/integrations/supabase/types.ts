@@ -113,7 +113,7 @@ export type Database = {
           access_token: string | null
           company_id: string | null
           created_at: string
-          domain: string
+          domain: string | null
           expires_at: string | null
           id: string
           member_id: string
@@ -124,7 +124,7 @@ export type Database = {
           access_token?: string | null
           company_id?: string | null
           created_at?: string
-          domain: string
+          domain?: string | null
           expires_at?: string | null
           id?: string
           member_id: string
@@ -135,7 +135,7 @@ export type Database = {
           access_token?: string | null
           company_id?: string | null
           created_at?: string
-          domain?: string
+          domain?: string | null
           expires_at?: string | null
           id?: string
           member_id?: string
