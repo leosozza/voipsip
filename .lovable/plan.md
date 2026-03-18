@@ -1,26 +1,51 @@
 
-# Conformidade Bitrix24 Telephony - Plano de Implementação
 
-## Status: EM EXECUÇÃO
+## Plano: Conformidade com Bitrix24 Marketplace + BX24.js SDK
 
-### ✅ Fase 1: Corrigir bitrix-sync
-- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
-- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
-- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
-- [x] Adicionar action `search_crm` (searchCrmEntities)
-- [x] Adicionar action `bind_events` / `unbind_events`
-- [x] Adicionar action `show_call_card` / `hide_call_card`
+### Contexto
+A documentacao do Bitrix24 exige que apps no Marketplace usem o BX24.js SDK para comunicacao dentro do iframe, e que cenarios obrigatorios de telefonia estejam implementados. Atualmente faltam alguns itens criticos.
 
-### ✅ Fase 2: Eventos obrigatórios
-- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
-- [x] Criar tabela `bitrix_events` com realtime habilitado
-- [x] RLS policies para a tabela
+### Alteracoes
 
-### ✅ Fase 3: UI
-- [x] Seção "Linhas Externas" nas configurações
-- [x] Seção "Eventos Bitrix24" com bind/unbind
-- [x] Hook atualizado com todas as novas mutations
+**1. config.toml -- verify_jwt = false para endpoints publicos**
+Adicionar configuracao para `bitrix-install` e `bitrix-events` aceitarem requests sem JWT (requisicoes vem do Bitrix24, nao de usuarios autenticados):
+```toml
+[functions.bitrix-install]
+verify_jwt = false
 
-## Próximos passos
-- Integrar eventos recebidos com o softphone (realtime subscription)
-- Implementar flow completo de click-to-call (evento → discagem automática)
+[functions.bitrix-events]
+verify_jwt = false
+```
+
+**2. BitrixApp.tsx -- Integrar BX24.js SDK**
+- Carregar o script `//api.bitrix24.com/api/v1/` dinamicamente
+- Usar `BX24.init()` para inicializar o contexto do iframe
+- Usar `BX24.fitWindow()` para ajustar o tamanho do frame automaticamente
+- Obter `domain` e `member_id` via `BX24.getAuth()` como fallback (alem dos query params)
+
+**3. BitrixSettingsPage.tsx -- Integrar BX24.js SDK**
+- Mesma integracao com BX24.js: carregar script, `BX24.init()`, `BX24.fitWindow()`
+- Obter contexto de autenticacao via SDK
+
+**4. bitrix-events/index.ts -- Processar OnExternalCallStart com SHOW=1**
+Apos salvar o evento, chamar `telephony.externalcall.register` com `SHOW=1` para exibir o card de chamada no CRM (requisito obrigatorio do Marketplace). Isso requer:
+- Buscar tokens da empresa via `bitrix_credentials` ou `bitrix_installations`
+- Chamar a API do Bitrix24 com o token para registrar a chamada
+- Atualizar o status do evento para "processed"
+
+**5. Checklist de conformidade Marketplace**
+| Requisito | Status |
+|---|---|
+| Register incoming/outgoing calls | Implementado (bitrix-sync: register) |
+| Pass incoming line number (Sales Intelligence) | Implementado (LINE_NUMBER param) |
+| Attach call recording | Implementado (bitrix-sync: attach_record) |
+| OnExternalCallStart handler (click2call) | Parcial -- falta SHOW=1 no processing |
+| OnExternalCallBackStart handler | Implementado (event.bind) |
+| BX24.installFinish() na instalacao | Implementado (bitrix-install) |
+| BX24.js SDK nas paginas iframe | **Faltando** -- sera adicionado |
+
+### Resumo das mudancas
+- 1 arquivo de config (`supabase/config.toml`)
+- 2 paginas frontend (`BitrixApp.tsx`, `BitrixSettingsPage.tsx`)
+- 1 edge function (`bitrix-events/index.ts`)
+
