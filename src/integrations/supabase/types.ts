@@ -152,6 +152,57 @@ export type Database = {
           },
         ]
       }
+      bitrix_user_mappings: {
+        Row: {
+          bitrix_user_id: string
+          bitrix_user_name: string | null
+          company_id: string
+          created_at: string
+          id: string
+          inner_number: string | null
+          is_queue_member: boolean
+          sip_account_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bitrix_user_id: string
+          bitrix_user_name?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          inner_number?: string | null
+          is_queue_member?: boolean
+          sip_account_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bitrix_user_id?: string
+          bitrix_user_name?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          inner_number?: string | null
+          is_queue_member?: boolean
+          sip_account_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bitrix_user_mappings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bitrix_user_mappings_sip_account_id_fkey"
+            columns: ["sip_account_id"]
+            isOneToOne: false
+            referencedRelation: "sip_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           call_ended_at: string | null
