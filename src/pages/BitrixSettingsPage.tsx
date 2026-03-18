@@ -6,15 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BitrixSettings } from '@/components/settings/BitrixSettings';
 
-declare global {
-  interface Window {
-    BX24?: {
-      init: (callback: () => void) => void;
-      fitWindow: () => void;
-      getAuth: () => { domain: string; member_id: string; access_token: string } | null;
-    };
-  }
-}
+
 
 function loadBX24Script(): Promise<void> {
   return new Promise((resolve, reject) => {
