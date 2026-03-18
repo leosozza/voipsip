@@ -1,43 +1,81 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Phone, CheckCircle, Settings, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, LogIn, Building2, LayoutDashboard, Phone, Settings, BookOpen, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { resolveBitrixContext } from '@/lib/bitrix-context';
+import { useToast } from '@/hooks/use-toast';
+import { BitrixDashboardTab } from '@/components/bitrix/BitrixDashboardTab';
+import { BitrixCallsTab } from '@/components/bitrix/BitrixCallsTab';
+import { BitrixSettingsTab } from '@/components/bitrix/BitrixSettingsTab';
+import { BitrixGuideTab } from '@/components/bitrix/BitrixGuideTab';
 
-interface InstallationStatus {
-  domain: string;
-  memberId: string;
-  isInstalled: boolean;
-  companyLinked: boolean;
-}
+type Step = 'loading' | 'no-context' | 'auth' | 'create-company' | 'linked';
 
 export default function BitrixApp() {
   const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<InstallationStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasContext, setHasContext] = useState(true);
+  const [step, setStep] = useState<Step>('loading');
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [domain, setDomain] = useState('');
+  const [memberId, setMemberId] = useState('');
+
+  // Auth form
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Company form
+  const [companyName, setCompanyName] = useState('');
+  const [companyLoading, setCompanyLoading] = useState(false);
+
+  const { toast } = useToast();
+
+  const defaultTab = searchParams.get('tab') || 'dashboard';
+
+  const tryLinkInstallation = async (userId: string) => {
+    const { data: membership } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (membership?.company_id) {
+      if (memberId) {
+        await supabase
+          .from('bitrix_installations')
+          .update({ company_id: membership.company_id })
+          .eq('member_id', memberId);
+      }
+      setCompanyId(membership.company_id);
+      setStep('linked');
+    } else {
+      setStep('create-company');
+    }
+  };
 
   useEffect(() => {
     async function init() {
       const ctx = await resolveBitrixContext(searchParams);
+      setDomain(ctx.domain);
+      setMemberId(ctx.memberId);
 
-      // No Bitrix context at all
       if (!ctx.memberId && !ctx.domain) {
-        setHasContext(false);
-        setLoading(false);
+        setStep('no-context');
         return;
       }
 
       try {
-        // Try by member_id first, fallback to domain
         let data: any = null;
         if (ctx.memberId) {
           const res = await supabase
             .from('bitrix_installations')
-            .select('id, domain, company_id, member_id')
+            .select('company_id')
             .eq('member_id', ctx.memberId)
             .maybeSingle();
           data = res.data;
@@ -45,56 +83,99 @@ export default function BitrixApp() {
         if (!data && ctx.domain) {
           const res = await supabase
             .from('bitrix_installations')
-            .select('id, domain, company_id, member_id')
+            .select('company_id')
             .eq('domain', ctx.domain)
             .maybeSingle();
           data = res.data;
         }
 
-        // Auto-correct: update domain if installation exists without one
-        if (data && !data.domain && ctx.domain) {
-          await supabase
-            .from('bitrix_installations')
-            .update({ domain: ctx.domain })
-            .eq('id', data.id);
-          data.domain = ctx.domain;
+        if (data?.company_id) {
+          setCompanyId(data.company_id);
+          setStep('linked');
+          return;
         }
-
-        const resolvedDomain = ctx.domain || data?.domain || '';
-
-        setStatus({
-          domain: resolvedDomain,
-          memberId: ctx.memberId || data?.member_id || '',
-          isInstalled: !!data,
-          companyLinked: !!data?.company_id,
-        });
       } catch {
-        setStatus({
-          domain: ctx.domain,
-          memberId: ctx.memberId,
-          isInstalled: false,
-          companyLinked: false,
-        });
-      } finally {
-        setLoading(false);
+        // ignore
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await tryLinkInstallation(session.user.id);
+      } else {
+        setStep('auth');
       }
     }
 
     init();
   }, [searchParams]);
 
-  if (loading) {
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar.' });
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        if (data.user) {
+          await tryLinkInstallation(data.user.id);
+        }
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleCreateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCompanyLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Não autenticado');
+
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert({ name: companyName })
+        .select('id')
+        .single();
+      if (companyError) throw companyError;
+
+      const { error: memberError } = await supabase
+        .from('company_members')
+        .insert({ company_id: company.id, user_id: session.user.id, role: 'admin' });
+      if (memberError) throw memberError;
+
+      if (memberId) {
+        await supabase
+          .from('bitrix_installations')
+          .update({ company_id: company.id })
+          .eq('member_id', memberId);
+      }
+
+      setCompanyId(company.id);
+      setStep('linked');
+      toast({ title: 'Empresa criada e portal vinculado!' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setCompanyLoading(false);
+    }
+  };
+
+  if (step === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Carregando integração...</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!hasContext) {
+  if (step === 'no-context') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="max-w-md">
@@ -109,80 +190,122 @@ export default function BitrixApp() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-2xl space-y-4">
-        <Card>
+  if (step === 'auth') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5" />
-              MicroSip Connector - Integração Telefonia
+              <LogIn className="h-5 w-5" />
+              {authMode === 'signin' ? 'Entrar' : 'Criar conta'}
             </CardTitle>
+            <CardDescription>
+              Para vincular o portal{domain ? ` ${domain}` : ''}, faça login ou crie uma conta.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {status?.isInstalled ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Aplicativo instalado</span>
-                </div>
-                {status.domain && (
-                  <div className="rounded-lg border p-3 space-y-1">
-                    <p className="text-sm text-muted-foreground">Portal</p>
-                    <p className="font-medium">{status.domain}</p>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Empresa vinculada:</span>
-                  <Badge variant={status.companyLinked ? 'default' : 'secondary'}>
-                    {status.companyLinked ? 'Sim' : 'Não vinculada'}
-                  </Badge>
-                </div>
-                {!status.companyLinked && (
-                  <p className="text-sm text-muted-foreground">
-                    Para vincular este portal a uma empresa, acesse as Configurações do aplicativo
-                    e faça login na plataforma MicroSip Connector.
-                  </p>
-                )}
+          <CardContent>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
-            ) : (
-              <div className="text-center space-y-2">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">
-                  Instalação em processamento. Aguarde alguns instantes e recarregue a página.
-                </p>
+              <div className="space-y-2">
+                <Label>Senha</Label>
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
               </div>
-            )}
+              <Button type="submit" disabled={authLoading} className="w-full">
+                {authLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {authMode === 'signin' ? 'Entrar' : 'Criar conta'}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                {authMode === 'signin' ? 'Não tem conta?' : 'Já tem conta?'}{' '}
+                <button type="button" className="text-primary underline" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}>
+                  {authMode === 'signin' ? 'Criar conta' : 'Entrar'}
+                </button>
+              </p>
+            </form>
           </CardContent>
         </Card>
-
-        {status?.isInstalled && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Funcionalidades</p>
-                  <p className="text-sm text-muted-foreground">
-                    Click-to-Call, registro de chamadas, gravações e Sales Intelligence
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const d = status?.domain || '';
-                    const m = status?.memberId || '';
-                    window.location.href = `/bitrix/settings?DOMAIN=${encodeURIComponent(d)}&member_id=${encodeURIComponent(m)}`;
-                  }}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Configurações
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
+    );
+  }
+
+  if (step === 'create-company') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Criar empresa
+            </CardTitle>
+            <CardDescription>
+              Crie uma empresa para vincular ao portal{domain ? ` ${domain}` : ''}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateCompany} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome da empresa</Label>
+                <Input value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Minha Empresa" />
+              </div>
+              <Button type="submit" disabled={companyLoading || !companyName} className="w-full">
+                {companyLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Criar e vincular
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Step: linked — full tabbed app
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="border-b px-4 py-3">
+        <h1 className="text-lg font-semibold">
+          MicroSip Connector{domain ? ` — ${domain}` : ''}
+        </h1>
+      </div>
+
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <div className="border-b px-4">
+          <TabsList className="h-auto bg-transparent p-0 gap-0">
+            <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="calls" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-2">
+              <Phone className="h-4 w-4" />
+              Chamadas
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
+            <TabsTrigger value="guide" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-2">
+              <BookOpen className="h-4 w-4" />
+              Guia
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <div className="p-4">
+          <TabsContent value="dashboard" className="mt-0">
+            {companyId && <BitrixDashboardTab companyId={companyId} />}
+          </TabsContent>
+          <TabsContent value="calls" className="mt-0">
+            {companyId && <BitrixCallsTab companyId={companyId} />}
+          </TabsContent>
+          <TabsContent value="settings" className="mt-0">
+            {companyId && <BitrixSettingsTab companyId={companyId} />}
+          </TabsContent>
+          <TabsContent value="guide" className="mt-0">
+            {companyId && <BitrixGuideTab companyId={companyId} />}
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }
