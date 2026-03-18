@@ -156,6 +156,11 @@ export function BitrixSettingsTab({ companyId }: Props) {
 
       <Separator />
 
+      {/* User Mappings */}
+      <BitrixUserMappings companyId={companyId} />
+
+      <Separator />
+
       {/* Bitrix Integration Settings */}
       <BitrixSettings companyId={companyId} />
     </div>
