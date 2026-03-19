@@ -78,3 +78,23 @@ export async function resolveBitrixContext(searchParams: URLSearchParams): Promi
 
   return { domain, memberId };
 }
+
+/**
+ * Derive a human-friendly company name from a Bitrix24 portal domain.
+ * e.g. "dratende.bitrix24.com.br" → "Dratende"
+ *      "acme-corp.bitrix24.com"   → "Acme Corp"
+ */
+export function companyNameFromDomain(domain: string): string {
+  // Extract subdomain before .bitrix24
+  const sub = domain.replace(/\.bitrix24\..+$/i, '').trim();
+  if (!sub || sub === domain) return domain;
+
+  // Replace separators with spaces
+  const spaced = sub.replace(/[-_]/g, ' ');
+
+  // Title case
+  return spaced
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}

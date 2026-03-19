@@ -54,9 +54,34 @@ export default function BitrixApp() {
       }
       setCompanyId(membership.company_id);
       setStep('linked');
-    } else {
-      setStep('create-company');
+      return;
     }
+
+    // Auto-create company from domain name
+    const derivedName = domain ? companyNameFromDomain(domain) : '';
+    if (derivedName) {
+      try {
+        const { data: newCompanyId, error } = await supabase
+          .rpc('create_company_with_admin', { p_name: derivedName });
+        if (error) throw error;
+
+        if (memberId) {
+          await supabase
+            .from('bitrix_installations')
+            .update({ company_id: newCompanyId })
+            .eq('member_id', memberId);
+        }
+        setCompanyId(newCompanyId);
+        setStep('linked');
+        toast({ title: `Empresa "${derivedName}" criada automaticamente!` });
+        return;
+      } catch (err: any) {
+        console.error('Auto-create company failed:', err);
+        // Fall through to manual form
+      }
+    }
+
+    setStep('create-company');
   };
 
   useEffect(() => {
