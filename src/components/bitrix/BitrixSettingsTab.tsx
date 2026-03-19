@@ -14,6 +14,7 @@ import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { useBitrixCredentials } from '@/hooks/useBitrixCredentials';
 import { BitrixSipLines } from '@/components/bitrix/BitrixSipLines';
 import { BitrixUserMappings } from '@/components/bitrix/BitrixUserMappings';
+import { testSipConnection, type SipTestResult } from '@/lib/sip-test';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
