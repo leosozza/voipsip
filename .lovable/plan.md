@@ -1,37 +1,27 @@
 
 
-## Criação automática de empresa na instalação
+## Remover seções redundantes do iframe Bitrix
 
-### Objetivo
-Quando o usuário se autentica no iframe Bitrix e não possui empresa, criar automaticamente uma empresa com nome derivado do domínio (ex: `dratende.bitrix24.com.br` → `dr atende`), eliminando o passo manual "Criar empresa".
+### Problema
+No iframe do Bitrix (`BitrixSettingsTab`), estão aparecendo os cards "Integração Bitrix24" (OAuth manual) e "Vincular Portal Bitrix24", que são desnecessários porque a conexão é feita automaticamente durante a instalação via Marketplace.
+
+### Solução
+Remover o componente `<BitrixSettings>` do `BitrixSettingsTab` (iframe), mantendo-o apenas na página `/settings` (acesso direto fora do iframe). No iframe, manter apenas:
+- Contas SIP
+- Linhas externas (BitrixSipLines)
+- Mapeamento de usuários (BitrixUserMappings)
+- Cards de Linhas Externas e Eventos devem ser movidos para o `BitrixSettingsTab` diretamente (ou criar versão simplificada)
 
 ### Mudanças
 
-**1. Função utilitária para derivar nome do domínio** (`src/lib/bitrix-context.ts`)
-- Nova função `companyNameFromDomain(domain: string): string`
-- Extrai o subdomínio antes de `.bitrix24`, aplica heurística de separação por camelCase/palavras comuns (ex: `dratende` → `dr atende`, `minhaempresa` → `minhaempresa`)
-- Fallback: usa o subdomínio cru se não conseguir separar
+**1. `src/components/bitrix/BitrixSettingsTab.tsx`**
+- Remover import e renderização de `<BitrixSettings companyId={companyId} />`
+- Adicionar os cards de Linhas Externas (Sales Intelligence) e Eventos Bitrix24 diretamente neste componente, usando os hooks `useBitrixCredentials` para as ações (bind/unbind events, load/add/delete lines)
+- Manter separadores e organização visual
 
-**2. Auto-criar empresa em `tryLinkInstallation`** (`src/pages/BitrixApp.tsx`)
-- Quando o usuário autenticado não tem empresa (onde hoje vai para `create-company`), chamar automaticamente `supabase.rpc('create_company_with_admin', { p_name: derivedName })`
-- Vincular a instalação Bitrix ao `company_id` retornado
-- Ir direto para `step = 'linked'` sem mostrar formulário
-- Manter o formulário `create-company` como fallback apenas se a criação automática falhar
+**2. `src/components/settings/BitrixSettings.tsx`** — sem alterações
+- Continua sendo usado na página `/settings` para conexão manual fora do iframe
 
-**3. Empresa editável depois** (já suportado)
-- A policy `Admins can update their company` já permite que admins alterem o nome via Settings — nenhuma mudança necessária
-
-### Lógica de extração do nome
-```text
-"dratende.bitrix24.com.br"  → subdomínio "dratende"  → "dr atende"
-"minhaempresa.bitrix24.com" → subdomínio "minhaempresa" → "minhaempresa"  
-"acme-corp.bitrix24.com"    → subdomínio "acme-corp" → "acme corp"
-```
-- Remove `.bitrix24.*`
-- Substitui `-` e `_` por espaços
-- Resultado é capitalizado (title case)
-
-### Arquivos modificados
-- `src/lib/bitrix-context.ts` — adicionar `companyNameFromDomain()`
-- `src/pages/BitrixApp.tsx` — auto-criar empresa em `tryLinkInstallation`, remover redirecionamento para `create-company` no fluxo principal
+### Resultado
+O iframe mostra apenas configurações operacionais (SIP, linhas, mapeamentos, eventos). A conexão OAuth fica restrita à página Settings standalone.
 
