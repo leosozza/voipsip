@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Server, Building2, Check, Star } from 'lucide-react';
+import { Plus, Trash2, Server, Building2, Star, Wifi, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
