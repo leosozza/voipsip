@@ -219,22 +219,41 @@ export function BitrixSettingsTab({ companyId }: Props) {
             <p className="text-sm text-muted-foreground">Nenhuma conta SIP cadastrada.</p>
           ) : (
             sipAccounts.map(acc => (
-              <div key={acc.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{acc.display_name}</span>
-                    {acc.is_default && <Badge variant="secondary" className="text-xs">Padrão</Badge>}
+              <div key={acc.id} className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{acc.display_name}</span>
+                      {acc.is_default && <Badge variant="secondary" className="text-xs">Padrão</Badge>}
+                      {testResults[acc.id] && (
+                        <Badge variant={testResults[acc.id].success ? 'default' : 'destructive'} className="text-xs">
+                          {testResults[acc.id].success ? '✓ OK' : '✗ Falha'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{acc.sip_username}@{acc.sip_server}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{acc.sip_username}@{acc.sip_server}</p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleTestSip(acc)}
+                      disabled={testingAccountId === acc.id}
+                      title="Testar conexão SIP"
+                    >
+                      {testingAccountId === acc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
+                    </Button>
+                    {!acc.is_default && (
+                      <Button size="sm" variant="ghost" onClick={() => handleSetDefault(acc.id)} className="text-xs">Definir padrão</Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteSip(acc.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  {!acc.is_default && (
-                    <Button size="sm" variant="ghost" onClick={() => handleSetDefault(acc.id)} className="text-xs">Definir padrão</Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteSip(acc.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {testResults[acc.id] && !testResults[acc.id].success && (
+                  <p className="text-xs text-destructive">{testResults[acc.id].message}</p>
+                )}
               </div>
             ))
           )}
