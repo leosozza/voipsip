@@ -48,6 +48,9 @@ export function BitrixSettingsTab({ companyId }: Props) {
   const [externalLines, setExternalLines] = useState<any[]>([]);
   const [linesLoaded, setLinesLoaded] = useState(false);
   const [eventsBound, setEventsBound] = useState(false);
+  const [testingAccountId, setTestingAccountId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, SipTestResult>>({});
+  const { toast } = useToast();
   const { toast } = useToast();
 
   const form = useForm<SipForm>({
