@@ -35,24 +35,11 @@ export function useCompany() {
 
   const createCompany = useMutation({
     mutationFn: async (name: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
+      const { data: companyId, error } = await supabase
+        .rpc('create_company_with_admin', { p_name: name });
 
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({ name })
-        .select()
-        .single();
-
-      if (companyError) throw companyError;
-
-      const { error: memberError } = await supabase
-        .from('company_members')
-        .insert({ company_id: company.id, user_id: user.id, role: 'admin' });
-
-      if (memberError) throw memberError;
-
-      return company as Company;
+      if (error) throw error;
+      return { id: companyId, name } as Company;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['current-company'] });

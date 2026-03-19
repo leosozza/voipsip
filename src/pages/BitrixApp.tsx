@@ -138,17 +138,11 @@ export default function BitrixApp() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('Não autenticado');
 
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({ name: companyName })
-        .select('id')
-        .single();
-      if (companyError) throw companyError;
+      const { data: newCompanyId, error: rpcError } = await supabase
+        .rpc('create_company_with_admin', { p_name: companyName });
+      if (rpcError) throw rpcError;
 
-      const { error: memberError } = await supabase
-        .from('company_members')
-        .insert({ company_id: company.id, user_id: session.user.id, role: 'admin' });
-      if (memberError) throw memberError;
+      const company = { id: newCompanyId };
 
       if (memberId) {
         await supabase
