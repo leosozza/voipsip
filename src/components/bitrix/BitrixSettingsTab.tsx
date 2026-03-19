@@ -89,7 +89,24 @@ export function BitrixSettingsTab({ companyId }: Props) {
     }
   };
 
-  const onLoadLines = async () => {
+  const handleTestSip = async (acc: import('@/types/voip').SipAccount) => {
+    setTestingAccountId(acc.id);
+    setTestResults(prev => ({ ...prev, [acc.id]: undefined as any }));
+    try {
+      const result = await testSipConnection(acc);
+      setTestResults(prev => ({ ...prev, [acc.id]: result }));
+      toast({
+        title: result.success ? 'Conexão SIP OK' : 'Falha na conexão SIP',
+        description: `${result.message} (${(result.durationMs / 1000).toFixed(1)}s)`,
+        variant: result.success ? 'default' : 'destructive',
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro no teste', description: err.message, variant: 'destructive' });
+    } finally {
+      setTestingAccountId(null);
+    }
+  };
+
     try {
       const lines = await getExternalLines.mutateAsync();
       setExternalLines(lines || []);
