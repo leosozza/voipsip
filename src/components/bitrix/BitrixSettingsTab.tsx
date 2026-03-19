@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Loader2, Trash2, RefreshCw, Phone, Zap, Unlink } from 'lucide-react';
+import { Plus, Loader2, Trash2, RefreshCw, Phone, Zap, Unlink, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { useBitrixCredentials } from '@/hooks/useBitrixCredentials';
 import { BitrixSipLines } from '@/components/bitrix/BitrixSipLines';
 import { BitrixUserMappings } from '@/components/bitrix/BitrixUserMappings';
+import { testSipConnection, type SipTestResult } from '@/lib/sip-test';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
@@ -47,6 +48,8 @@ export function BitrixSettingsTab({ companyId }: Props) {
   const [externalLines, setExternalLines] = useState<any[]>([]);
   const [linesLoaded, setLinesLoaded] = useState(false);
   const [eventsBound, setEventsBound] = useState(false);
+  const [testingAccountId, setTestingAccountId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, SipTestResult>>({});
   const { toast } = useToast();
 
   const form = useForm<SipForm>({
@@ -83,6 +86,24 @@ export function BitrixSettingsTab({ companyId }: Props) {
     for (const acc of sipAccounts) {
       if (acc.id === id) await updateSipAccount.mutateAsync({ id, is_default: true });
       else if (acc.is_default) await updateSipAccount.mutateAsync({ id: acc.id, is_default: false });
+    }
+  };
+
+  const handleTestSip = async (acc: import('@/types/voip').SipAccount) => {
+    setTestingAccountId(acc.id);
+    setTestResults(prev => ({ ...prev, [acc.id]: undefined as any }));
+    try {
+      const result = await testSipConnection(acc);
+      setTestResults(prev => ({ ...prev, [acc.id]: result }));
+      toast({
+        title: result.success ? 'Conexão SIP OK' : 'Falha na conexão SIP',
+        description: `${result.message} (${(result.durationMs / 1000).toFixed(1)}s)`,
+        variant: result.success ? 'default' : 'destructive',
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro no teste', description: err.message, variant: 'destructive' });
+    } finally {
+      setTestingAccountId(null);
     }
   };
 
@@ -198,22 +219,41 @@ export function BitrixSettingsTab({ companyId }: Props) {
             <p className="text-sm text-muted-foreground">Nenhuma conta SIP cadastrada.</p>
           ) : (
             sipAccounts.map(acc => (
-              <div key={acc.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{acc.display_name}</span>
-                    {acc.is_default && <Badge variant="secondary" className="text-xs">Padrão</Badge>}
+              <div key={acc.id} className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{acc.display_name}</span>
+                      {acc.is_default && <Badge variant="secondary" className="text-xs">Padrão</Badge>}
+                      {testResults[acc.id] && (
+                        <Badge variant={testResults[acc.id].success ? 'default' : 'destructive'} className="text-xs">
+                          {testResults[acc.id].success ? '✓ OK' : '✗ Falha'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{acc.sip_username}@{acc.sip_server}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{acc.sip_username}@{acc.sip_server}</p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleTestSip(acc)}
+                      disabled={testingAccountId === acc.id}
+                      title="Testar conexão SIP"
+                    >
+                      {testingAccountId === acc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
+                    </Button>
+                    {!acc.is_default && (
+                      <Button size="sm" variant="ghost" onClick={() => handleSetDefault(acc.id)} className="text-xs">Definir padrão</Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteSip(acc.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  {!acc.is_default && (
-                    <Button size="sm" variant="ghost" onClick={() => handleSetDefault(acc.id)} className="text-xs">Definir padrão</Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteSip(acc.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {testResults[acc.id] && !testResults[acc.id].success && (
+                  <p className="text-xs text-destructive">{testResults[acc.id].message}</p>
+                )}
               </div>
             ))
           )}
