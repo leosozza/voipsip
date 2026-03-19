@@ -37,7 +37,27 @@ export default function Settings() {
   const { currentCompany, createCompany } = useCompany();
   const { sipAccounts, isLoading, addSipAccount, updateSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
   const [showSipForm, setShowSipForm] = useState(false);
+  const [testingAccountId, setTestingAccountId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, SipTestResult>>({});
   const { toast } = useToast();
+
+  const handleTestSip = async (account: any) => {
+    setTestingAccountId(account.id);
+    setTestResults(prev => { const n = { ...prev }; delete n[account.id]; return n; });
+    try {
+      const result = await testSipConnection(account);
+      setTestResults(prev => ({ ...prev, [account.id]: result }));
+      toast({
+        title: result.success ? 'Conexão SIP OK' : 'Falha na conexão SIP',
+        description: `${result.message} (${result.durationMs}ms)`,
+        variant: result.success ? 'default' : 'destructive',
+      });
+    } catch {
+      toast({ title: 'Erro no teste', variant: 'destructive' });
+    } finally {
+      setTestingAccountId(null);
+    }
+  };
 
   const sipForm = useForm<SipForm>({
     resolver: zodResolver(sipSchema),
