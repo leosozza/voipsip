@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Server, Building2, Check, Star } from 'lucide-react';
+import { Plus, Trash2, Server, Building2, Star, Wifi, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { testSipConnection, type SipTestResult } from '@/lib/sip-test';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
@@ -36,7 +37,27 @@ export default function Settings() {
   const { currentCompany, createCompany } = useCompany();
   const { sipAccounts, isLoading, addSipAccount, updateSipAccount, deleteSipAccount } = useSipAccounts(currentCompany?.id);
   const [showSipForm, setShowSipForm] = useState(false);
+  const [testingAccountId, setTestingAccountId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, SipTestResult>>({});
   const { toast } = useToast();
+
+  const handleTestSip = async (account: any) => {
+    setTestingAccountId(account.id);
+    setTestResults(prev => { const n = { ...prev }; delete n[account.id]; return n; });
+    try {
+      const result = await testSipConnection(account);
+      setTestResults(prev => ({ ...prev, [account.id]: result }));
+      toast({
+        title: result.success ? 'Conexão SIP OK' : 'Falha na conexão SIP',
+        description: `${result.message} (${result.durationMs}ms)`,
+        variant: result.success ? 'default' : 'destructive',
+      });
+    } catch {
+      toast({ title: 'Erro no teste', variant: 'destructive' });
+    } finally {
+      setTestingAccountId(null);
+    }
+  };
 
   const sipForm = useForm<SipForm>({
     resolver: zodResolver(sipSchema),
@@ -220,6 +241,19 @@ export default function Settings() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleTestSip(account)}
+                        disabled={testingAccountId === account.id}
+                        title="Testar conexão SIP"
+                      >
+                        {testingAccountId === account.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Wifi className={`h-4 w-4 ${testResults[account.id]?.success === true ? 'text-green-500' : testResults[account.id]?.success === false ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        )}
+                      </Button>
                       {!account.is_default && (
                         <Button
                           variant="ghost"
@@ -234,6 +268,9 @@ export default function Settings() {
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
+                    {testResults[account.id] && !testResults[account.id].success && (
+                      <p className="text-xs text-destructive mt-1">{testResults[account.id].message}</p>
+                    )}
                   </div>
                 ))}
               </div>
