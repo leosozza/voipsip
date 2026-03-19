@@ -241,6 +241,19 @@ export default function Settings() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleTestSip(account)}
+                        disabled={testingAccountId === account.id}
+                        title="Testar conexão SIP"
+                      >
+                        {testingAccountId === account.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Wifi className={`h-4 w-4 ${testResults[account.id]?.success === true ? 'text-green-500' : testResults[account.id]?.success === false ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        )}
+                      </Button>
                       {!account.is_default && (
                         <Button
                           variant="ghost"
@@ -255,6 +268,9 @@ export default function Settings() {
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
+                    {testResults[account.id] && !testResults[account.id].success && (
+                      <p className="text-xs text-destructive mt-1">{testResults[account.id].message}</p>
+                    )}
                   </div>
                 ))}
               </div>
