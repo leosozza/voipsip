@@ -51,7 +51,6 @@ export function BitrixSettingsTab({ companyId }: Props) {
   const [testingAccountId, setTestingAccountId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, SipTestResult>>({});
   const { toast } = useToast();
-  const { toast } = useToast();
 
   const form = useForm<SipForm>({
     resolver: zodResolver(sipSchema),
