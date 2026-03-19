@@ -107,6 +107,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
     }
   };
 
+  const onLoadLines = async () => {
     try {
       const lines = await getExternalLines.mutateAsync();
       setExternalLines(lines || []);
