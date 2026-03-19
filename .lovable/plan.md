@@ -1,44 +1,37 @@
 
-# Conformidade Bitrix24 Telephony - Plano de Implementação
+Diagnóstico (feito agora)
+- Reproduzi o fluxo em `/bitrix/app?domain=dratende.bitrix24.com&member_id=...`.
+- Ao clicar em “Criar e vincular”, a requisição `POST /rest/v1/companies?select=id` retorna `403` com: `new row violates row-level security policy for table "companies"`.
 
-## Status: CONCLUÍDO
+Causa raiz
+- O insert de empresa está usando `.insert(...).select('id').single()`.
+- Isso exige leitura da linha recém-criada (RETURNING/SELECT), mas a policy de SELECT em `companies` só permite membros da empresa (`is_company_member(id)`).
+- No momento exato da criação, o usuário ainda não é membro, então a leitura falha e o fluxo quebra.
 
-### ✅ Fase 1: Corrigir bitrix-sync
-- [x] Substituir `RECORD_URL` no finish por `telephony.externalCall.attachRecord` separado
-- [x] Adicionar `CALL_START_DATE`, `USER_PHONE_INNER`, `CRM_SOURCE` no register
-- [x] Adicionar action `add_external_line` / `delete_external_line` / `get_external_lines`
-- [x] Adicionar action `search_crm` (searchCrmEntities)
-- [x] Adicionar action `bind_events` / `unbind_events`
-- [x] Adicionar action `show_call_card` / `hide_call_card`
+Plano de correção
+1) Criar função de backend transacional para criação de empresa
+- Nova função SQL `public.create_company_with_admin(p_name text)` com `SECURITY DEFINER`.
+- Passos internos: valida `auth.uid()`, cria empresa, cria `company_members` com `role='admin'`, retorna `company_id`.
+- `GRANT EXECUTE` apenas para `authenticated`.
 
-### ✅ Fase 2: Eventos obrigatórios
-- [x] Criar edge function `bitrix-events` para webhooks OnExternalCallStart / OnExternalCallBackStart
-- [x] Criar tabela `bitrix_events` com realtime habilitado
-- [x] RLS policies para a tabela
-- [x] Processar OnExternalCallStart com SHOW=1 (telephony.externalcall.register)
+2) Atualizar fluxo de criação no Bitrix iframe
+- Arquivo: `src/pages/BitrixApp.tsx`
+- Substituir insert direto em `companies` + insert em `company_members` por `supabase.rpc('create_company_with_admin', { p_name: companyName })`.
+- Manter vínculo da instalação (`bitrix_installations.company_id`) após receber `company_id` retornado.
 
-### ✅ Fase 3: UI
-- [x] Seção "Linhas Externas" nas configurações
-- [x] Seção "Eventos Bitrix24" com bind/unbind
-- [x] Hook atualizado com todas as novas mutations
+3) Atualizar fluxo de criação na tela Settings
+- Arquivo: `src/hooks/useCompany.ts`
+- Mesmo ajuste: usar RPC em `createCompany` (elimina erro idêntico fora do Bitrix iframe).
 
-### ✅ Fase 4: BX24.js SDK + Conformidade Marketplace
-- [x] Integrar BX24.js SDK em BitrixApp.tsx (init, fitWindow, getAuth)
-- [x] Integrar BX24.js SDK em BitrixSettingsPage.tsx
-- [x] Configurar verify_jwt=false para bitrix-install e bitrix-events
-- [x] OnExternalCallStart → register com SHOW=1
+4) Melhorar tratamento de erro para diagnóstico rápido
+- Em ambos fluxos, exibir mensagem mais específica quando falhar (empresa vs vínculo do portal), para evitar erro genérico.
 
-## Checklist Marketplace
-| Requisito | Status |
-|---|---|
-| Register incoming/outgoing calls | ✅ |
-| Pass incoming line number (Sales Intelligence) | ✅ |
-| Attach call recording | ✅ |
-| OnExternalCallStart handler (click2call + SHOW=1) | ✅ |
-| OnExternalCallBackStart handler | ✅ |
-| BX24.installFinish() na instalação | ✅ |
-| BX24.js SDK nas páginas iframe | ✅ |
+Detalhes técnicos
+- Não vamos afrouxar policy de SELECT de `companies` (evita exposição indevida).
+- A correção evita empresa órfã e garante atomicidade.
+- Mantém o modelo multi-tenant e RLS sem abrir exceções perigosas.
 
-## Próximos passos
-- Integrar eventos recebidos com o softphone (realtime subscription)
-- Implementar flow completo de click-to-call (evento → discagem automática)
+Validação após implementação
+- Teste 1 (E2E): criar empresa pelo `/bitrix/app` com portal dratende; esperado: sem 403, entra em `linked`.
+- Teste 2 (DB): confirmar 1 linha em `companies`, 1 linha em `company_members` (admin do usuário atual) e `bitrix_installations.company_id` preenchido.
+- Teste 3 (E2E): criar empresa pela página `/settings` e confirmar que o erro de RLS não ocorre.
