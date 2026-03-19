@@ -1,37 +1,37 @@
 
-Diagnóstico (feito agora)
-- Reproduzi o fluxo em `/bitrix/app?domain=dratende.bitrix24.com&member_id=...`.
-- Ao clicar em “Criar e vincular”, a requisição `POST /rest/v1/companies?select=id` retorna `403` com: `new row violates row-level security policy for table "companies"`.
 
-Causa raiz
-- O insert de empresa está usando `.insert(...).select('id').single()`.
-- Isso exige leitura da linha recém-criada (RETURNING/SELECT), mas a policy de SELECT em `companies` só permite membros da empresa (`is_company_member(id)`).
-- No momento exato da criação, o usuário ainda não é membro, então a leitura falha e o fluxo quebra.
+## Criação automática de empresa na instalação
 
-Plano de correção
-1) Criar função de backend transacional para criação de empresa
-- Nova função SQL `public.create_company_with_admin(p_name text)` com `SECURITY DEFINER`.
-- Passos internos: valida `auth.uid()`, cria empresa, cria `company_members` com `role='admin'`, retorna `company_id`.
-- `GRANT EXECUTE` apenas para `authenticated`.
+### Objetivo
+Quando o usuário se autentica no iframe Bitrix e não possui empresa, criar automaticamente uma empresa com nome derivado do domínio (ex: `dratende.bitrix24.com.br` → `dr atende`), eliminando o passo manual "Criar empresa".
 
-2) Atualizar fluxo de criação no Bitrix iframe
-- Arquivo: `src/pages/BitrixApp.tsx`
-- Substituir insert direto em `companies` + insert em `company_members` por `supabase.rpc('create_company_with_admin', { p_name: companyName })`.
-- Manter vínculo da instalação (`bitrix_installations.company_id`) após receber `company_id` retornado.
+### Mudanças
 
-3) Atualizar fluxo de criação na tela Settings
-- Arquivo: `src/hooks/useCompany.ts`
-- Mesmo ajuste: usar RPC em `createCompany` (elimina erro idêntico fora do Bitrix iframe).
+**1. Função utilitária para derivar nome do domínio** (`src/lib/bitrix-context.ts`)
+- Nova função `companyNameFromDomain(domain: string): string`
+- Extrai o subdomínio antes de `.bitrix24`, aplica heurística de separação por camelCase/palavras comuns (ex: `dratende` → `dr atende`, `minhaempresa` → `minhaempresa`)
+- Fallback: usa o subdomínio cru se não conseguir separar
 
-4) Melhorar tratamento de erro para diagnóstico rápido
-- Em ambos fluxos, exibir mensagem mais específica quando falhar (empresa vs vínculo do portal), para evitar erro genérico.
+**2. Auto-criar empresa em `tryLinkInstallation`** (`src/pages/BitrixApp.tsx`)
+- Quando o usuário autenticado não tem empresa (onde hoje vai para `create-company`), chamar automaticamente `supabase.rpc('create_company_with_admin', { p_name: derivedName })`
+- Vincular a instalação Bitrix ao `company_id` retornado
+- Ir direto para `step = 'linked'` sem mostrar formulário
+- Manter o formulário `create-company` como fallback apenas se a criação automática falhar
 
-Detalhes técnicos
-- Não vamos afrouxar policy de SELECT de `companies` (evita exposição indevida).
-- A correção evita empresa órfã e garante atomicidade.
-- Mantém o modelo multi-tenant e RLS sem abrir exceções perigosas.
+**3. Empresa editável depois** (já suportado)
+- A policy `Admins can update their company` já permite que admins alterem o nome via Settings — nenhuma mudança necessária
 
-Validação após implementação
-- Teste 1 (E2E): criar empresa pelo `/bitrix/app` com portal dratende; esperado: sem 403, entra em `linked`.
-- Teste 2 (DB): confirmar 1 linha em `companies`, 1 linha em `company_members` (admin do usuário atual) e `bitrix_installations.company_id` preenchido.
-- Teste 3 (E2E): criar empresa pela página `/settings` e confirmar que o erro de RLS não ocorre.
+### Lógica de extração do nome
+```text
+"dratende.bitrix24.com.br"  → subdomínio "dratende"  → "dr atende"
+"minhaempresa.bitrix24.com" → subdomínio "minhaempresa" → "minhaempresa"  
+"acme-corp.bitrix24.com"    → subdomínio "acme-corp" → "acme corp"
+```
+- Remove `.bitrix24.*`
+- Substitui `-` e `_` por espaços
+- Resultado é capitalizado (title case)
+
+### Arquivos modificados
+- `src/lib/bitrix-context.ts` — adicionar `companyNameFromDomain()`
+- `src/pages/BitrixApp.tsx` — auto-criar empresa em `tryLinkInstallation`, remover redirecionamento para `create-company` no fluxo principal
+
