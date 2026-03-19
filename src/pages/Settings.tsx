@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { testSipConnection, type SipTestResult } from '@/lib/sip-test';
 
 const sipSchema = z.object({
   display_name: z.string().min(1, 'Nome obrigatório'),
