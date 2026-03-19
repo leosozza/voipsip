@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { resolveBitrixContext } from '@/lib/bitrix-context';
+import { resolveBitrixContext, companyNameFromDomain } from '@/lib/bitrix-context';
 import { useToast } from '@/hooks/use-toast';
 import { BitrixDashboardTab } from '@/components/bitrix/BitrixDashboardTab';
 import { BitrixCallsTab } from '@/components/bitrix/BitrixCallsTab';
