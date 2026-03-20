@@ -119,7 +119,13 @@ async function bitrixApi(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
-  return await resp.json();
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error(`Bitrix API returned non-JSON (${resp.status}): ${text.substring(0, 200)}`);
+    throw new Error(`Bitrix24 retornou resposta inválida (HTTP ${resp.status}). Verifique o domínio e tokens.`);
+  }
 }
 
 // Resolve credentials: try bitrix_credentials first, fallback to bitrix_installations
