@@ -41,7 +41,14 @@ async function refreshToken(
   const tokenUrl = `https://oauth.bitrix.info/oauth/token/?grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${holder.refresh_token}`;
 
   const resp = await fetch(tokenUrl);
-  const data = await resp.json();
+  const respText = await resp.text();
+  let data: any;
+  try {
+    data = JSON.parse(respText);
+  } catch {
+    console.error(`OAuth refresh returned non-JSON (${resp.status}): ${respText.substring(0, 200)}`);
+    throw new Error(`Erro ao renovar token Bitrix24. Reconecte o portal.`);
+  }
 
   if (data.error) {
     throw new Error(`Bitrix OAuth error: ${data.error_description || data.error}`);
@@ -119,7 +126,13 @@ async function bitrixApi(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
-  return await resp.json();
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error(`Bitrix API returned non-JSON (${resp.status}): ${text.substring(0, 200)}`);
+    throw new Error(`Bitrix24 retornou resposta inválida (HTTP ${resp.status}). Verifique o domínio e tokens.`);
+  }
 }
 
 // Resolve credentials: try bitrix_credentials first, fallback to bitrix_installations
