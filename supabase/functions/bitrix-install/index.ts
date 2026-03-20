@@ -43,7 +43,7 @@ function extractDomain(parsed: Record<string, any>, urlParams: URLSearchParams, 
 
   // 4. Referer header (e.g. https://portal.bitrix24.com/...)
   const referer = req.headers.get('referer') || '';
-  const refMatch = referer.match(/https?:\/\/([^\/]+\.bitrix24\.[a-z]+)/i);
+  const refMatch = referer.match(/https?:\/\/([^\/]+\.bitrix24\.[a-z.]+)/i);
   if (refMatch) return refMatch[1];
 
   // 5. Origin header
