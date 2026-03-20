@@ -597,6 +597,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === ACTION: test ===
+    if (action === "test") {
+      const result = await bitrixApi(domain, token, "app.info", {});
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(
       JSON.stringify({ error: "Ação inválida" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
