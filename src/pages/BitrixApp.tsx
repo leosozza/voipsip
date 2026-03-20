@@ -77,8 +77,13 @@ export default function BitrixApp() {
         return;
       } catch (err: any) {
         console.error('Auto-create company failed:', err);
+        setCompanyName(derivedName);
         // Fall through to manual form
       }
+    } else {
+      // Pre-fill with domain-derived name even if empty derivation
+      const fallbackName = domain ? domain.split('.')[0] : '';
+      setCompanyName(fallbackName);
     }
 
     setStep('create-company');
