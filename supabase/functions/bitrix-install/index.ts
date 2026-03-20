@@ -48,7 +48,7 @@ function extractDomain(parsed: Record<string, any>, urlParams: URLSearchParams, 
 
   // 5. Origin header
   const origin = req.headers.get('origin') || '';
-  const origMatch = origin.match(/https?:\/\/([^\/]+\.bitrix24\.[a-z]+)/i);
+  const origMatch = origin.match(/https?:\/\/([^\/]+\.bitrix24\.[a-z.]+)/i);
   if (origMatch) return origMatch[1];
 
   return '';
