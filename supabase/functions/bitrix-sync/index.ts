@@ -121,6 +121,7 @@ async function bitrixApi(
   params: Record<string, any>
 ) {
   const url = `https://${domain}/rest/${method}?auth=${token}`;
+  console.log(`Bitrix API call: ${method} -> ${domain} (token: ${token.substring(0, 10)}...)`);
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -592,6 +593,14 @@ Deno.serve(async (req) => {
       const result = await bitrixApi(domain, token, "voximplant.line.outgoing.sip.set", {
         CONFIG_ID: call_data.config_id,
       });
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === ACTION: test ===
+    if (action === "test") {
+      const result = await bitrixApi(domain, token, "app.info", {});
       return new Response(JSON.stringify({ success: true, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
