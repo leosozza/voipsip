@@ -38,5 +38,6 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  return { user, session, isLoading, isAuthenticated: !!session, signIn, signUp, signOut };
+  const isAnonymous = session?.user?.is_anonymous === true;
+  return { user, session, isLoading, isAuthenticated: !!session && !isAnonymous, signIn, signUp, signOut };
 }
