@@ -41,7 +41,14 @@ async function refreshToken(
   const tokenUrl = `https://oauth.bitrix.info/oauth/token/?grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${holder.refresh_token}`;
 
   const resp = await fetch(tokenUrl);
-  const data = await resp.json();
+  const respText = await resp.text();
+  let data: any;
+  try {
+    data = JSON.parse(respText);
+  } catch {
+    console.error(`OAuth refresh returned non-JSON (${resp.status}): ${respText.substring(0, 200)}`);
+    throw new Error(`Erro ao renovar token Bitrix24. Reconecte o portal.`);
+  }
 
   if (data.error) {
     throw new Error(`Bitrix OAuth error: ${data.error_description || data.error}`);
