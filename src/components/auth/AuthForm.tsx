@@ -18,9 +18,9 @@ const authSchema = z.object({
 type AuthFormData = z.infer<typeof authSchema>;
 
 export function AuthForm() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -33,7 +33,11 @@ export function AuthForm() {
   const onSubmit = async (data: AuthFormData) => {
     setIsLoading(true);
     try {
-      if (mode === 'signin') {
+      if (mode === 'forgot') {
+        await resetPassword(data.email);
+        toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.' });
+        setMode('signin');
+      } else if (mode === 'signin') {
         await signIn(data.email, data.password);
         toast({ title: 'Bem-vindo de volta!' });
       } else {
@@ -59,10 +63,10 @@ export function AuthForm() {
             <Phone className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">
-            {mode === 'signin' ? 'Entrar' : 'Criar Conta'}
+            {mode === 'forgot' ? 'Recuperar Senha' : mode === 'signin' ? 'Entrar' : 'Criar Conta'}
           </CardTitle>
           <CardDescription>
-            MicroSip Connector
+            {mode === 'forgot' ? 'Enviaremos um link para redefinir sua senha' : 'MicroSip Connector'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,31 +89,55 @@ export function AuthForm() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {mode !== 'forgot' && (
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {mode === 'signin' && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setMode('forgot')}
+                    className="text-sm text-muted-foreground hover:text-primary hover:underline"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === 'signin' ? 'Entrar' : 'Criar Conta'}
+                {mode === 'forgot' ? 'Enviar link' : mode === 'signin' ? 'Entrar' : 'Criar Conta'}
               </Button>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
-            {mode === 'signin' ? (
+            {mode === 'forgot' ? (
+              <p>
+                Lembrou a senha?{' '}
+                <button
+                  type="button"
+                  onClick={() => setMode('signin')}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Voltar ao login
+                </button>
+              </p>
+            ) : mode === 'signin' ? (
               <p>
                 Não tem conta?{' '}
                 <button

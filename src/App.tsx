@@ -13,6 +13,7 @@ import BitrixCallback from "./pages/BitrixCallback";
 import BitrixApp from "./pages/BitrixApp";
 import BitrixSettingsPage from "./pages/BitrixSettingsPage";
 import MicroSipGuide from "./pages/MicroSipGuide";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ function AppContent() {
 
   // Check if current path is a Bitrix iframe route (no auth required)
   const isBitrixRoute = window.location.pathname.startsWith('/bitrix/');
+  const isResetPassword = window.location.pathname === '/reset-password';
 
   if (isBitrixRoute) {
     return (
@@ -51,6 +53,16 @@ function AppContent() {
           <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
           <Route path="/bitrix/callback" element={<BitrixCallback />} />
           <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
+  if (isResetPassword) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>
     );
