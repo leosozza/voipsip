@@ -14,7 +14,7 @@ interface Props {
 export function BitrixDashboardTab({ companyId }: Props) {
   const { callLogs, metrics, isLoading } = useCallLogs(companyId);
   const { sipAccounts, defaultAccount, isLoading: sipLoading } = useSipAccounts(companyId);
-  const { isConnected, isExpired } = useBitrixCredentials(companyId);
+  const { isConnected, isExpired, isRefreshing } = useBitrixCredentials(companyId);
 
   return (
     <div className="space-y-6">
