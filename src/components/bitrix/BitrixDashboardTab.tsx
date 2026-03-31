@@ -5,7 +5,7 @@ import { MetricsCards } from '@/components/dashboard/MetricsCards';
 import { CallsChart } from '@/components/dashboard/CallsChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Wifi, WifiOff, Link2, Link2Off } from 'lucide-react';
+import { Phone, Wifi, WifiOff, Link2, Link2Off, Loader2 } from 'lucide-react';
 
 interface Props {
   companyId: string;
