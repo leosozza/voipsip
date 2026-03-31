@@ -32,7 +32,7 @@ interface BitrixSettingsProps {
 
 export function BitrixSettings({ companyId }: BitrixSettingsProps) {
   const {
-    credentials, isLoading, isConnected, isExpired,
+    credentials, isLoading, isConnected, isExpired, isRefreshing,
     saveBitrixCredentials, deleteBitrixCredentials, testConnection,
     getExternalLines, addExternalLine, deleteExternalLine,
     bindEvents, unbindEvents, linkInstallation,
@@ -173,8 +173,10 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
               </CardDescription>
             </div>
             {isConnected && (
-              <Badge variant={isExpired ? 'destructive' : 'default'} className="flex items-center gap-1">
-                {isExpired ? (
+              <Badge variant={isRefreshing ? 'secondary' : isExpired ? 'destructive' : 'default'} className="flex items-center gap-1">
+                {isRefreshing ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" /> Renovando...</>
+                ) : isExpired ? (
                   <><AlertTriangle className="h-3 w-3" /> Token expirado</>
                 ) : (
                   <><Check className="h-3 w-3" /> Conectado</>
@@ -296,7 +298,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
           </CardContent>
         </Card>
       )}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -372,10 +374,10 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Events Card - only show when connected */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -420,7 +422,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }

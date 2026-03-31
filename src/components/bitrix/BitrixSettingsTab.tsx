@@ -42,7 +42,7 @@ interface Props {
 
 export function BitrixSettingsTab({ companyId }: Props) {
   const { sipAccounts, isLoading: sipLoading, addSipAccount, deleteSipAccount, updateSipAccount } = useSipAccounts(companyId);
-  const { isConnected, isExpired, getExternalLines, addExternalLine, deleteExternalLine, bindEvents, unbindEvents } = useBitrixCredentials(companyId);
+  const { isConnected, isExpired, isRefreshing, getExternalLines, addExternalLine, deleteExternalLine, bindEvents, unbindEvents } = useBitrixCredentials(companyId);
   const [showSipForm, setShowSipForm] = useState(false);
   const [showLineForm, setShowLineForm] = useState(false);
   const [externalLines, setExternalLines] = useState<any[]>([]);
@@ -271,7 +271,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
       <Separator />
 
       {/* External Lines (Sales Intelligence) */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -347,10 +347,10 @@ export function BitrixSettingsTab({ companyId }: Props) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Events Card */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -385,7 +385,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }

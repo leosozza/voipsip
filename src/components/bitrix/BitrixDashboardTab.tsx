@@ -5,7 +5,7 @@ import { MetricsCards } from '@/components/dashboard/MetricsCards';
 import { CallsChart } from '@/components/dashboard/CallsChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Wifi, WifiOff, Link2, Link2Off } from 'lucide-react';
+import { Phone, Wifi, WifiOff, Link2, Link2Off, Loader2 } from 'lucide-react';
 
 interface Props {
   companyId: string;
@@ -14,7 +14,7 @@ interface Props {
 export function BitrixDashboardTab({ companyId }: Props) {
   const { callLogs, metrics, isLoading } = useCallLogs(companyId);
   const { sipAccounts, defaultAccount, isLoading: sipLoading } = useSipAccounts(companyId);
-  const { isConnected, isExpired } = useBitrixCredentials(companyId);
+  const { isConnected, isExpired, isRefreshing } = useBitrixCredentials(companyId);
 
   return (
     <div className="space-y-6">
@@ -73,7 +73,14 @@ export function BitrixDashboardTab({ companyId }: Props) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              {isConnected && !isExpired ? (
+              {isRefreshing ? (
+                <>
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Renovando...
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">Atualizando token</span>
+                </>
+              ) : isConnected && !isExpired ? (
                 <>
                   <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">Conectado</Badge>
                   <span className="text-sm text-muted-foreground">Integração ativa</span>

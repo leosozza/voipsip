@@ -23,13 +23,13 @@ interface SipLine {
 }
 
 export function BitrixSipLines({ companyId, sipAccounts }: Props) {
-  const { isConnected, isExpired, sipGetLines, sipAddLine, sipDeleteLine } = useBitrixCredentials(companyId);
+  const { isConnected, isExpired, isRefreshing, sipGetLines, sipAddLine, sipDeleteLine } = useBitrixCredentials(companyId);
   const [lines, setLines] = useState<SipLine[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  if (!isConnected || isExpired) return null;
+  if (!isConnected || (isExpired && !isRefreshing)) return null;
 
   const onLoadLines = async () => {
     try {

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -181,14 +182,40 @@ export function useBitrixCredentials(companyId: string | undefined) {
     ? new Date(credentials.expires_at) < new Date()
     : false;
 
+  // Auto-refresh expired tokens
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshAttempted = useRef(false);
+
+  const refreshToken = useMutation({
+    mutationFn: () => invokeBitrixSync('test'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bitrix-credentials', companyId] });
+      setIsRefreshing(false);
+      refreshAttempted.current = false;
+    },
+    onError: () => {
+      setIsRefreshing(false);
+    },
+  });
+
+  useEffect(() => {
+    if (isConnected && isExpired && !isRefreshing && !refreshAttempted.current) {
+      refreshAttempted.current = true;
+      setIsRefreshing(true);
+      refreshToken.mutate();
+    }
+  }, [isConnected, isExpired, isRefreshing]);
+
   return {
     credentials,
     isLoading,
     isConnected,
     isExpired,
+    isRefreshing,
     saveBitrixCredentials,
     deleteBitrixCredentials,
     testConnection,
+    refreshToken,
     syncCallToBitrix,
     getExternalLines,
     addExternalLine,
