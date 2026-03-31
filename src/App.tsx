@@ -58,6 +58,16 @@ function AppContent() {
     );
   }
 
+  if (isResetPassword) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
