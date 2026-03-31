@@ -271,7 +271,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
       <Separator />
 
       {/* External Lines (Sales Intelligence) */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
