@@ -120,9 +120,18 @@ export default function BitrixApp() {
         }
 
         if (data?.company_id) {
-          setCompanyId(data.company_id);
-          setStep('linked');
-          return;
+          // Check if user is authenticated — RLS on sip_accounts etc. requires auth
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setCompanyId(data.company_id);
+            setStep('linked');
+            return;
+          } else {
+            // Save company_id for after login, but require auth first
+            setCompanyId(data.company_id);
+            setStep('auth');
+            return;
+          }
         }
       } catch {
         // ignore
