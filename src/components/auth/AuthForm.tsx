@@ -18,9 +18,9 @@ const authSchema = z.object({
 type AuthFormData = z.infer<typeof authSchema>;
 
 export function AuthForm() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
