@@ -42,7 +42,7 @@ interface Props {
 
 export function BitrixSettingsTab({ companyId }: Props) {
   const { sipAccounts, isLoading: sipLoading, addSipAccount, deleteSipAccount, updateSipAccount } = useSipAccounts(companyId);
-  const { isConnected, isExpired, getExternalLines, addExternalLine, deleteExternalLine, bindEvents, unbindEvents } = useBitrixCredentials(companyId);
+  const { isConnected, isExpired, isRefreshing, getExternalLines, addExternalLine, deleteExternalLine, bindEvents, unbindEvents } = useBitrixCredentials(companyId);
   const [showSipForm, setShowSipForm] = useState(false);
   const [showLineForm, setShowLineForm] = useState(false);
   const [externalLines, setExternalLines] = useState<any[]>([]);
