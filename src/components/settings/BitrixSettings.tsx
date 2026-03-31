@@ -173,8 +173,10 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
               </CardDescription>
             </div>
             {isConnected && (
-              <Badge variant={isExpired ? 'destructive' : 'default'} className="flex items-center gap-1">
-                {isExpired ? (
+              <Badge variant={isRefreshing ? 'secondary' : isExpired ? 'destructive' : 'default'} className="flex items-center gap-1">
+                {isRefreshing ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" /> Renovando...</>
+                ) : isExpired ? (
                   <><AlertTriangle className="h-3 w-3" /> Token expirado</>
                 ) : (
                   <><Check className="h-3 w-3" /> Conectado</>
