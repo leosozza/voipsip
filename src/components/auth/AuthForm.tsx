@@ -63,10 +63,10 @@ export function AuthForm() {
             <Phone className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">
-            {mode === 'signin' ? 'Entrar' : 'Criar Conta'}
+            {mode === 'forgot' ? 'Recuperar Senha' : mode === 'signin' ? 'Entrar' : 'Criar Conta'}
           </CardTitle>
           <CardDescription>
-            MicroSip Connector
+            {mode === 'forgot' ? 'Enviaremos um link para redefinir sua senha' : 'MicroSip Connector'}
           </CardDescription>
         </CardHeader>
         <CardContent>
