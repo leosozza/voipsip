@@ -12,6 +12,10 @@ import { toast } from '@/hooks/use-toast';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
+  password: z.string().optional(),
+});
+
+const authSchemaWithPassword = authSchema.extend({
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
