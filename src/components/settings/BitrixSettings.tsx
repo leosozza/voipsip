@@ -374,7 +374,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Events Card - only show when connected */}
       {isConnected && !isExpired && (
