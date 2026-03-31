@@ -33,7 +33,11 @@ export function AuthForm() {
   const onSubmit = async (data: AuthFormData) => {
     setIsLoading(true);
     try {
-      if (mode === 'signin') {
+      if (mode === 'forgot') {
+        await resetPassword(data.email);
+        toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.' });
+        setMode('signin');
+      } else if (mode === 'signin') {
         await signIn(data.email, data.password);
         toast({ title: 'Bem-vindo de volta!' });
       } else {
