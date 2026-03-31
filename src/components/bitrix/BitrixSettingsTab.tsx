@@ -347,7 +347,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Events Card */}
       {isConnected && !isExpired && (
