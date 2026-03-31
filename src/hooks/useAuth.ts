@@ -46,5 +46,5 @@ export function useAuth() {
   };
 
   const isAnonymous = session?.user?.is_anonymous === true;
-  return { user, session, isLoading, isAuthenticated: !!session && !isAnonymous, signIn, signUp, signOut };
+  return { user, session, isLoading, isAuthenticated: !!session && !isAnonymous, signIn, signUp, signOut, resetPassword };
 }

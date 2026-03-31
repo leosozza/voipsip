@@ -126,7 +126,18 @@ export function AuthForm() {
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
-            {mode === 'signin' ? (
+            {mode === 'forgot' ? (
+              <p>
+                Lembrou a senha?{' '}
+                <button
+                  type="button"
+                  onClick={() => setMode('signin')}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Voltar ao login
+                </button>
+              </p>
+            ) : mode === 'signin' ? (
               <p>
                 Não tem conta?{' '}
                 <button
