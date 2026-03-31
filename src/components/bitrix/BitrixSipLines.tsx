@@ -29,7 +29,7 @@ export function BitrixSipLines({ companyId, sipAccounts }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  if (!isConnected || isExpired) return null;
+  if (!isConnected || (isExpired && !isRefreshing)) return null;
 
   const onLoadLines = async () => {
     try {

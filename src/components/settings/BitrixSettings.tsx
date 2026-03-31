@@ -377,7 +377,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
       ) : null}
 
       {/* Events Card - only show when connected */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">

@@ -73,7 +73,14 @@ export function BitrixDashboardTab({ companyId }: Props) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              {isConnected && !isExpired ? (
+              {isRefreshing ? (
+                <>
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Renovando...
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">Atualizando token</span>
+                </>
+              ) : isConnected && !isExpired ? (
                 <>
                   <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">Conectado</Badge>
                   <span className="text-sm text-muted-foreground">Integração ativa</span>

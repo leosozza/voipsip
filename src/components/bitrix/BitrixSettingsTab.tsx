@@ -350,7 +350,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
       ) : null}
 
       {/* Events Card */}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
