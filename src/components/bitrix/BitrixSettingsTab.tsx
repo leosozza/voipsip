@@ -385,7 +385,7 @@ export function BitrixSettingsTab({ companyId }: Props) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }

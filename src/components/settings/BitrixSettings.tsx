@@ -422,7 +422,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }
