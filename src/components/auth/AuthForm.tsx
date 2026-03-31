@@ -38,9 +38,17 @@ export function AuthForm() {
         toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.' });
         setMode('signin');
       } else if (mode === 'signin') {
+        if (!data.password || data.password.length < 6) {
+          toast({ title: 'Erro', description: 'Senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
+          return;
+        }
         await signIn(data.email, data.password);
         toast({ title: 'Bem-vindo de volta!' });
       } else {
+        if (!data.password || data.password.length < 6) {
+          toast({ title: 'Erro', description: 'Senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
+          return;
+        }
         await signUp(data.email, data.password);
         toast({ title: 'Conta criada com sucesso!' });
       }
