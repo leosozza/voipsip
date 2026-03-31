@@ -38,6 +38,13 @@ export function useAuth() {
     if (error) throw error;
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  };
+
   const isAnonymous = session?.user?.is_anonymous === true;
   return { user, session, isLoading, isAuthenticated: !!session && !isAnonymous, signIn, signUp, signOut };
 }
