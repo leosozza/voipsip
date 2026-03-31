@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  password: z.string().default(''),
 });
 
 type AuthFormData = z.infer<typeof authSchema>;
@@ -38,9 +38,17 @@ export function AuthForm() {
         toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.' });
         setMode('signin');
       } else if (mode === 'signin') {
+        if (!data.password || data.password.length < 6) {
+          toast({ title: 'Erro', description: 'Senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
+          return;
+        }
         await signIn(data.email, data.password);
         toast({ title: 'Bem-vindo de volta!' });
       } else {
+        if (!data.password || data.password.length < 6) {
+          toast({ title: 'Erro', description: 'Senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
+          return;
+        }
         await signUp(data.email, data.password);
         toast({ title: 'Conta criada com sucesso!' });
       }
