@@ -32,7 +32,7 @@ interface BitrixSettingsProps {
 
 export function BitrixSettings({ companyId }: BitrixSettingsProps) {
   const {
-    credentials, isLoading, isConnected, isExpired,
+    credentials, isLoading, isConnected, isExpired, isRefreshing,
     saveBitrixCredentials, deleteBitrixCredentials, testConnection,
     getExternalLines, addExternalLine, deleteExternalLine,
     bindEvents, unbindEvents, linkInstallation,
