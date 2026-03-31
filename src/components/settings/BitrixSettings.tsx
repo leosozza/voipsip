@@ -298,7 +298,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
           </CardContent>
         </Card>
       )}
-      {isConnected && !isExpired && (
+      {(isConnected && !isExpired) || isRefreshing ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
