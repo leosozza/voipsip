@@ -43,6 +43,7 @@ function AppContent() {
 
   // Check if current path is a Bitrix iframe route (no auth required)
   const isBitrixRoute = window.location.pathname.startsWith('/bitrix/');
+  const isResetPassword = window.location.pathname === '/reset-password';
 
   if (isBitrixRoute) {
     return (
