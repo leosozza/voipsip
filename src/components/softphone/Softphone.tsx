@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCallSync } from '@/hooks/useCallSync';
 import type { SipAccount, SipRegistrationState, CallState } from '@/types/voip';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface SoftphoneProps {
   sipAccount: SipAccount | null;
