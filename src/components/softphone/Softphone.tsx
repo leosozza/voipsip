@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCallSync } from '@/hooks/useCallSync';
 import type { SipAccount, SipRegistrationState, CallState } from '@/types/voip';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface SoftphoneProps {
   sipAccount: SipAccount | null;
@@ -78,7 +79,7 @@ export function Softphone({ sipAccount, bitrixUserId, onCallStart, onCallEnd }: 
     // Open SIP URI for external dialer
     if (sipAccount) {
       const domain = sipAccount.sip_domain || sipAccount.sip_server;
-      window.location.href = `sip:${phoneNumber}@${domain}`;
+      window.location.href = `sip:${stripBrazilDDI(phoneNumber)}@${domain}`;
     }
 
     setTimeout(() => {

@@ -9,6 +9,7 @@ import {
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import type { SipAccount } from '@/types/voip';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface ClickToCallProps {
   phoneNumber: string;
@@ -16,7 +17,7 @@ interface ClickToCallProps {
 
 function makeCall(phoneNumber: string, account: SipAccount) {
   const domain = account.sip_domain || account.sip_server;
-  const uri = `sip:${phoneNumber}@${domain}`;
+  const uri = `sip:${stripBrazilDDI(phoneNumber)}@${domain}`;
   window.location.href = uri;
 }
 

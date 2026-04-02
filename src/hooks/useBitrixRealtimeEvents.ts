@@ -4,6 +4,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { useCallSync } from '@/hooks/useCallSync';
 import { toast } from 'sonner';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface ActiveCall {
   bitrixCallId: string;
@@ -86,7 +87,8 @@ export function useBitrixRealtimeEvents() {
             }
 
             const domain = account.sip_domain || account.sip_server;
-            const sipUri = `sip:${event.phone_number}@${domain}`;
+            const dialNumber = stripBrazilDDI(event.phone_number);
+            const sipUri = `sip:${dialNumber}@${domain}`;
 
             // Track active call for finish
             setActiveCall({
