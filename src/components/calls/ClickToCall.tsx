@@ -9,6 +9,7 @@ import {
 import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import type { SipAccount } from '@/types/voip';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface ClickToCallProps {
   phoneNumber: string;
