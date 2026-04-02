@@ -1,43 +1,37 @@
 
 
-## Corrigir iframe do Bitrix mostrando dados zerados
+## Remover DDI 55 dos números antes de enviar ao MicroSIP
 
-### Causa raiz
-Quando o usuário faz login no iframe do Bitrix24, o `companyId` é resolvido corretamente da tabela `bitrix_installations` (`cca4cf26` = "Dr Atende"). Porém, o `handleAuth` apenas faz `setStep('linked')` sem verificar se o usuário logado é membro dessa empresa. Se o usuário autenticou pela primeira vez no iframe (contexto de storage diferente), ele pode não estar vinculado como membro da empresa. Como resultado, todas as queries protegidas por RLS (`sip_accounts`, `bitrix_credentials`, `call_logs`) retornam vazio.
+### Problema
+O Bitrix24 envia números com DDI brasileiro (ex: `5515996045202`), mas o MicroSIP só disca corretamente sem o DDI (ex: `15996045202`).
 
 ### Solução
-Alterar `handleAuth` em `BitrixApp.tsx` para, quando `companyId` já estiver resolvido da instalação:
+Criar uma função utilitária `stripBrazilDDI(phone)` que remove o prefixo `55` (ou `+55`) de números brasileiros, e aplicá-la nos 3 pontos onde o número é enviado ao MicroSIP via `sip:` URI:
 
-1. Verificar se o usuário logado já é membro da empresa (`company_members`)
-2. Se não for, adicionar como membro (admin se a empresa não tem membros, ou member)
-3. Só então ir para `setStep('linked')`
+1. **`src/lib/utils.ts`** — Adicionar função:
+   ```ts
+   export function stripBrazilDDI(phone: string): string {
+     let n = phone.replace(/\D/g, '');
+     if (n.startsWith('55') && n.length >= 12) {
+       n = n.slice(2);
+     }
+     return n;
+   }
+   ```
+   Lógica: se começa com `55` e tem 12+ dígitos (DDI + DDD + número), remove os 2 primeiros.
 
-### Alterações
+2. **`src/hooks/useBitrixRealtimeEvents.ts`** (linha 89) — Aplicar `stripBrazilDDI(event.phone_number)` no URI SIP.
 
-**`src/pages/BitrixApp.tsx`** -- Modificar `handleAuth`:
-```typescript
-// Após login bem-sucedido, se companyId já resolvido:
-if (companyId) {
-  // Verificar se já é membro
-  const { data: existing } = await supabase
-    .from('company_members')
-    .select('id')
-    .eq('user_id', data.user.id)
-    .eq('company_id', companyId)
-    .maybeSingle();
-  
-  if (!existing) {
-    // Adicionar como membro da empresa da instalação
-    await supabase
-      .from('company_members')
-      .insert({ company_id: companyId, user_id: data.user.id, role: 'admin' });
-  }
-  setStep('linked');
-}
-```
+3. **`src/components/calls/ClickToCall.tsx`** (linha 19) — Aplicar `stripBrazilDDI(phoneNumber)` no URI SIP.
 
-Tambem alterar o `init` para, quando o usuario ja esta autenticado e `company_id` existe na instalacao, verificar e vincular o membro antes de ir para `linked`.
+4. **`src/components/softphone/Softphone.tsx`** (linha 81) — Aplicar `stripBrazilDDI(phoneNumber)` no URI SIP.
+
+### Nota
+O número original (com DDI) continua sendo usado para registro no Bitrix24 e nos call_logs — a remoção é apenas no momento de montar o URI `sip:` para o MicroSIP.
 
 ### Arquivos modificados
-- `src/pages/BitrixApp.tsx`
+- `src/lib/utils.ts`
+- `src/hooks/useBitrixRealtimeEvents.ts`
+- `src/components/calls/ClickToCall.tsx`
+- `src/components/softphone/Softphone.tsx`
 
