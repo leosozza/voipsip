@@ -17,7 +17,7 @@ interface ClickToCallProps {
 
 function makeCall(phoneNumber: string, account: SipAccount) {
   const domain = account.sip_domain || account.sip_server;
-  const uri = `sip:${phoneNumber}@${domain}`;
+  const uri = `sip:${stripBrazilDDI(phoneNumber)}@${domain}`;
   window.location.href = uri;
 }
 

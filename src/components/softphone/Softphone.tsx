@@ -79,7 +79,7 @@ export function Softphone({ sipAccount, bitrixUserId, onCallStart, onCallEnd }: 
     // Open SIP URI for external dialer
     if (sipAccount) {
       const domain = sipAccount.sip_domain || sipAccount.sip_server;
-      window.location.href = `sip:${phoneNumber}@${domain}`;
+      window.location.href = `sip:${stripBrazilDDI(phoneNumber)}@${domain}`;
     }
 
     setTimeout(() => {
