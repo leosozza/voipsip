@@ -4,6 +4,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useSipAccounts } from '@/hooks/useSipAccounts';
 import { useCallSync } from '@/hooks/useCallSync';
 import { toast } from 'sonner';
+import { stripBrazilDDI } from '@/lib/utils';
 
 interface ActiveCall {
   bitrixCallId: string;
