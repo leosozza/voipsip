@@ -98,7 +98,7 @@ export function BitrixSettings({ companyId }: BitrixSettingsProps) {
   const onLoadLines = async () => {
     try {
       const result = await getExternalLines.mutateAsync();
-      setExternalLines(result || []);
+      setExternalLines(Array.isArray(result) ? result : []);
       setLinesLoaded(true);
     } catch (error: any) {
       toast({ title: 'Erro ao carregar linhas', description: error.message, variant: 'destructive' });
