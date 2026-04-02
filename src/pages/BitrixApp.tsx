@@ -181,8 +181,8 @@ export default function BitrixApp() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (data.user) {
-          // If companyId already resolved from installation, just go to linked
           if (companyId) {
+            await ensureMembership(data.user.id, companyId);
             setStep('linked');
           } else {
             await tryLinkInstallation(data.user.id);
