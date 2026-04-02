@@ -34,6 +34,9 @@ export default function BitrixApp() {
   const [companyName, setCompanyName] = useState('');
   const [companyLoading, setCompanyLoading] = useState(false);
 
+  // Realtime listener for Bitrix events (Click-to-Call)
+  useBitrixRealtimeEvents();
+
   const { toast } = useToast();
 
   const defaultTab = searchParams.get('tab') || 'dashboard';
