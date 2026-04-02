@@ -13,6 +13,7 @@ import { BitrixDashboardTab } from '@/components/bitrix/BitrixDashboardTab';
 import { BitrixCallsTab } from '@/components/bitrix/BitrixCallsTab';
 import { BitrixSettingsTab } from '@/components/bitrix/BitrixSettingsTab';
 import { BitrixGuideTab } from '@/components/bitrix/BitrixGuideTab';
+import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
 
 type Step = 'loading' | 'no-context' | 'auth' | 'create-company' | 'linked';
 
