@@ -41,6 +41,24 @@ export default function BitrixApp() {
 
   const defaultTab = searchParams.get('tab') || 'dashboard';
 
+  const ensureMembership = async (userId: string, targetCompanyId: string) => {
+    const { data: existing } = await supabase
+      .from('company_members')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('company_id', targetCompanyId)
+      .maybeSingle();
+
+    if (!existing) {
+      // Check if company has no members — if so, add as admin
+      const { data: hasNoMembers } = await supabase.rpc('company_has_no_members', { p_company_id: targetCompanyId });
+      const role = hasNoMembers ? 'admin' : 'admin'; // all iframe users get admin for now
+      await supabase
+        .from('company_members')
+        .insert({ company_id: targetCompanyId, user_id: userId, role });
+    }
+  };
+
   const tryLinkInstallation = async (userId: string) => {
     const { data: membership } = await supabase
       .from('company_members')
