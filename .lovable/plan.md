@@ -1,53 +1,43 @@
 
 
-## Renovação automática de tokens Bitrix24 no frontend
+## Corrigir iframe do Bitrix mostrando dados zerados
 
-### Situação atual
-- O backend (`bitrix-sync`) já renova tokens automaticamente quando uma ação é executada e o token está expirado
-- O frontend verifica `expires_at` localmente e mostra "Token expirado", bloqueando cards de linhas externas, eventos e SIP lines
-- O problema: o frontend bloqueia a UI antes de dar chance ao backend de renovar o token
+### Causa raiz
+Quando o usuário faz login no iframe do Bitrix24, o `companyId` é resolvido corretamente da tabela `bitrix_installations` (`cca4cf26` = "Dr Atende"). Porém, o `handleAuth` apenas faz `setStep('linked')` sem verificar se o usuário logado é membro dessa empresa. Se o usuário autenticou pela primeira vez no iframe (contexto de storage diferente), ele pode não estar vinculado como membro da empresa. Como resultado, todas as queries protegidas por RLS (`sip_accounts`, `bitrix_credentials`, `call_logs`) retornam vazio.
 
 ### Solução
-Adicionar uma mutation `refreshToken` no hook `useBitrixCredentials` que chama o backend com `action: 'test'` (que já faz refresh automático) e recarrega as credenciais. Usar essa mutation automaticamente quando `isExpired` é detectado.
+Alterar `handleAuth` em `BitrixApp.tsx` para, quando `companyId` já estiver resolvido da instalação:
 
-### Mudanças
+1. Verificar se o usuário logado já é membro da empresa (`company_members`)
+2. Se não for, adicionar como membro (admin se a empresa não tem membros, ou member)
+3. Só então ir para `setStep('linked')`
 
-**1. `src/hooks/useBitrixCredentials.ts`**
-- Adicionar mutation `refreshToken` que invoca `bitrix-sync` com `action: 'test'` e invalida o cache de credenciais
-- Adicionar `useEffect` que dispara `refreshToken` automaticamente quando `isExpired === true` e `isConnected === true`
-- Adicionar estado `isRefreshing` para que a UI mostre "Renovando token..." em vez de bloquear
-- Exportar `isRefreshing` no retorno do hook
+### Alterações
 
-**2. `src/components/bitrix/BitrixDashboardTab.tsx`**
-- Importar `isRefreshing` do hook
-- No card de status Bitrix: quando `isRefreshing`, mostrar badge "Renovando..." com spinner em vez de "Token expirado"
-
-**3. `src/components/bitrix/BitrixSettingsTab.tsx`**
-- Importar `isRefreshing` do hook
-- Tratar `isRefreshing` como "conectado" para não esconder os cards de linhas externas e eventos durante renovação
-
-**4. `src/components/bitrix/BitrixSipLines.tsx`**
-- Importar `isRefreshing` do hook
-- Não retornar `null` durante renovação (mostrar loading state)
-
-**5. `src/components/settings/BitrixSettings.tsx`**
-- Importar `isRefreshing` e mostrar estado de renovação no badge de status
-
-### Fluxo
-```text
-Token expirado detectado no frontend
-  → useEffect dispara refreshToken (action: 'test')
-  → Backend renova via oauth.bitrix.info
-  → Backend atualiza DB com novo token
-  → Frontend invalida query 'bitrix-credentials'
-  → Novo expires_at carregado → isExpired = false
-  → UI volta ao estado normal
+**`src/pages/BitrixApp.tsx`** -- Modificar `handleAuth`:
+```typescript
+// Após login bem-sucedido, se companyId já resolvido:
+if (companyId) {
+  // Verificar se já é membro
+  const { data: existing } = await supabase
+    .from('company_members')
+    .select('id')
+    .eq('user_id', data.user.id)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  
+  if (!existing) {
+    // Adicionar como membro da empresa da instalação
+    await supabase
+      .from('company_members')
+      .insert({ company_id: companyId, user_id: data.user.id, role: 'admin' });
+  }
+  setStep('linked');
+}
 ```
 
+Tambem alterar o `init` para, quando o usuario ja esta autenticado e `company_id` existe na instalacao, verificar e vincular o membro antes de ir para `linked`.
+
 ### Arquivos modificados
-- `src/hooks/useBitrixCredentials.ts`
-- `src/components/bitrix/BitrixDashboardTab.tsx`
-- `src/components/bitrix/BitrixSettingsTab.tsx`
-- `src/components/bitrix/BitrixSipLines.tsx`
-- `src/components/settings/BitrixSettings.tsx`
+- `src/pages/BitrixApp.tsx`
 
