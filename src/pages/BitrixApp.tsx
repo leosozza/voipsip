@@ -13,6 +13,7 @@ import { BitrixDashboardTab } from '@/components/bitrix/BitrixDashboardTab';
 import { BitrixCallsTab } from '@/components/bitrix/BitrixCallsTab';
 import { BitrixSettingsTab } from '@/components/bitrix/BitrixSettingsTab';
 import { BitrixGuideTab } from '@/components/bitrix/BitrixGuideTab';
+import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
 
 type Step = 'loading' | 'no-context' | 'auth' | 'create-company' | 'linked';
 
@@ -32,6 +33,9 @@ export default function BitrixApp() {
   // Company form
   const [companyName, setCompanyName] = useState('');
   const [companyLoading, setCompanyLoading] = useState(false);
+
+  // Realtime listener for Bitrix events (Click-to-Call)
+  useBitrixRealtimeEvents();
 
   const { toast } = useToast();
 
