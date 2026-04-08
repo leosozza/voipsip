@@ -59,14 +59,20 @@ export default function BitrixApp() {
     }
   };
 
-  const tryLinkInstallation = async (userId: string) => {
+  const tryLinkInstallation = async (
+    userId: string,
+    context?: { domain?: string; memberId?: string }
+  ) => {
+    const activeDomain = context?.domain ?? domain;
+    const activeMemberId = context?.memberId ?? memberId;
+
     // When inside Bitrix iframe, check if this specific domain already has a company
     // Do NOT reuse companies from other tenants
-    if (domain) {
+    if (activeDomain) {
       const { data: existingInstall } = await supabase
         .from('bitrix_installations')
         .select('company_id')
-        .eq('domain', domain)
+        .eq('domain', activeDomain)
         .not('company_id', 'is', null)
         .maybeSingle();
 
@@ -80,7 +86,7 @@ export default function BitrixApp() {
     }
 
     // If no memberId (not in iframe context), try existing membership
-    if (!memberId) {
+    if (!activeMemberId) {
       const { data: membership } = await supabase
         .from('company_members')
         .select('company_id')
@@ -96,18 +102,18 @@ export default function BitrixApp() {
     }
 
     // Auto-create company from domain name (each tenant gets its own company)
-    const derivedName = domain ? companyNameFromDomain(domain) : '';
+    const derivedName = activeDomain ? companyNameFromDomain(activeDomain) : '';
     if (derivedName) {
       try {
         const { data: newCompanyId, error } = await supabase
           .rpc('create_company_with_admin', { p_name: derivedName });
         if (error) throw error;
 
-        if (memberId) {
+        if (activeMemberId) {
           await supabase
             .from('bitrix_installations')
             .update({ company_id: newCompanyId })
-            .eq('member_id', memberId);
+            .eq('member_id', activeMemberId);
         }
         setCompanyId(newCompanyId);
         setStep('linked');
@@ -118,7 +124,7 @@ export default function BitrixApp() {
         setCompanyName(derivedName);
       }
     } else {
-      const fallbackName = domain ? domain.split('.')[0] : '';
+      const fallbackName = activeDomain ? activeDomain.split('.')[0] : '';
       setCompanyName(fallbackName);
     }
 
@@ -174,7 +180,7 @@ export default function BitrixApp() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        await tryLinkInstallation(session.user.id);
+        await tryLinkInstallation(session.user.id, ctx);
       } else {
         setStep('auth');
       }
@@ -199,7 +205,7 @@ export default function BitrixApp() {
             await ensureMembership(data.user.id, companyId);
             setStep('linked');
           } else {
-            await tryLinkInstallation(data.user.id);
+            await tryLinkInstallation(data.user.id, { domain, memberId });
           }
         }
       }
