@@ -1,5 +1,8 @@
 project_id = "tequeyzhsixypnvevuiu"
 
+[functions]
+import_map = "supabase/functions/import_map.json"
+
 [functions.bitrix-install]
 verify_jwt = false
 
