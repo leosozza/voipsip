@@ -92,6 +92,59 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (event === "registration") {
+      const status = url.searchParams.get("status") || "online";
+      const extensionNumber = url.searchParams.get("extension");
+
+      console.log(`MicroSip Registration: ${extensionNumber} is ${status}`);
+
+      if (extensionNumber) {
+        await supabase
+          .from("extensions")
+          .update({
+            status: status,
+            last_heartbeat: new Date().toISOString(),
+          })
+          .eq("company_id", companyId)
+          .eq("extension_number", extensionNumber);
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (event === "answer") {
+      // Find active call for this number
+      const { data: activeCall } = await supabase
+        .from("call_logs")
+        .select("bitrix_call_id")
+        .eq("company_id", companyId)
+        .eq("phone_number", phoneNumber)
+        .eq("direction", "inbound")
+        .neq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeCall?.bitrix_call_id) {
+        // Signal Bitrix that call is answered (using show to stop ringing)
+        await bitrixApi(tokenInfo.domain, tokenInfo.token, "telephony.externalcall.show", {
+          CALL_ID: activeCall.bitrix_call_id,
+          USER_ID: bitrixUserId,
+        });
+
+        await supabase
+          .from("call_logs")
+          .update({ status: "answered" })
+          .eq("bitrix_call_id", activeCall.bitrix_call_id);
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (event === "hangup" || event === "recording") {
       const recordingUrl = url.searchParams.get("recording_url");
       

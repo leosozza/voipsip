@@ -351,13 +351,44 @@ export default function MicroSipGuide() {
                   a: 'Verifique os dispositivos de áudio em MicroSIP → Settings → Audio. Certifique-se de que os codecs G.711 (PCMA/PCMU) estão habilitados.',
                 },
                 {
+                  title: "Configurar URLs de Eventos",
+                  description: "No MicroSip, vá em Configurações > Action URLs e preencha:",
+                  content: (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm font-medium">No Atendimento (On Answer):</p>
+                        <code className="block bg-secondary p-2 mt-1 break-all text-xs">
+                          https://tequeyzhsixypnvevuiu.supabase.co/functions/v1/microsip-webhook?event=answer&number=$number&company_id={currentCompany?.id}
+                        </code>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Ao Registrar (On Registration):</p>
+                        <code className="block bg-secondary p-2 mt-1 break-all text-xs">
+                          https://tequeyzhsixypnvevuiu.supabase.co/functions/v1/microsip-webhook?event=registration&extension=SEU_RAMAL&status=online&company_id={currentCompany?.id}
+                        </code>
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  title: "Configurar Término de Chamada",
+                  description: "Na mesma aba Action URLs, configure o evento de desligamento (On Hangup):",
+                  content: (
+                    <code className="block bg-secondary p-2 mt-1 break-all text-xs">
+                      https://tequeyzhsixypnvevuiu.supabase.co/functions/v1/microsip-webhook?event=hangup&number=$number&company_id={currentCompany?.id}
+                    </code>
+                  )
+                },
+                {
                   q: 'Erro 403 Forbidden ao ligar',
                   a: 'O trunk SIP pode ter restrição de IP. Verifique com sua operadora se o IP da sua conexão está autorizado.',
                 },
               ].map((item) => (
-                <div key={item.q} className="rounded-lg border p-3">
-                  <p className="font-medium">{item.q}</p>
-                  <p className="text-muted-foreground mt-1">{item.a}</p>
+                <div key={item.q || item.title} className="rounded-lg border p-3">
+                  <p className="font-medium">{item.q || item.title}</p>
+                  {item.a && <p className="text-muted-foreground mt-1">{item.a}</p>}
+                  {item.description && <p className="text-muted-foreground mt-1">{item.description}</p>}
+                  {item.content && <div className="mt-2">{item.content}</div>}
                 </div>
               ))}
             </div>

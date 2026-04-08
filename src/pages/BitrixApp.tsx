@@ -14,6 +14,7 @@ import { BitrixCallsTab } from '@/components/bitrix/BitrixCallsTab';
 import { BitrixSettingsTab } from '@/components/bitrix/BitrixSettingsTab';
 import { BitrixGuideTab } from '@/components/bitrix/BitrixGuideTab';
 import { useBitrixRealtimeEvents } from '@/hooks/useBitrixRealtimeEvents';
+import { MicroSipStatus } from '@/components/bitrix/MicroSipStatus';
 
 type Step = 'loading' | 'no-context' | 'auth' | 'create-company' | 'linked';
 
@@ -342,10 +343,11 @@ export default function BitrixApp() {
   // Step: linked — full tabbed app
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b px-4 py-3">
+      <div className="border-b px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">
           MicroSip Connector{domain ? ` — ${domain}` : ''}
         </h1>
+        {companyId && <MicroSipStatus companyId={companyId} />}
       </div>
 
       <Tabs defaultValue={defaultTab} className="w-full">
