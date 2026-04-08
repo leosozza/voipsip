@@ -1,0 +1,18 @@
+{
+  "name": "mcp-bitrix",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@supabase/supabase-js": "^2.102.1",
+    "dotenv": "^17.4.1",
+    "node-fetch": "^3.3.2"
+  }
+}

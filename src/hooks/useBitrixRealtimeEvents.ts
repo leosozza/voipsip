@@ -97,12 +97,26 @@ export function useBitrixRealtimeEvents() {
               startTime: Date.now(),
             });
 
+            // Fallback mechanism: if auto-trigger fails or is blocked, show action button
+            const triggerCall = () => {
+              window.location.href = sipUri;
+            };
+
             toast.info(`Discando para ${event.phone_number}...`, {
               description: `Via ${account.display_name}`,
-              duration: 5000,
+              duration: 10000,
+              action: {
+                label: 'Abrir MicroSIP',
+                onClick: triggerCall,
+              },
             });
 
-            window.location.href = sipUri;
+            // Attempt auto-trigger
+            try {
+              triggerCall();
+            } catch (err) {
+              console.error('Auto-trigger blocked:', err);
+            }
           }
         }
       )

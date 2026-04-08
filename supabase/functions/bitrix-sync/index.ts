@@ -121,19 +121,29 @@ async function bitrixApi(
   params: Record<string, any>
 ) {
   const url = `https://${domain}/rest/${method}?auth=${token}`;
-  console.log(`Bitrix API call: ${method} -> ${domain} (token: ${token.substring(0, 10)}...)`);
+  console.log(`[Bitrix API Request] ${method} on ${domain}`);
+  
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
+
   const text = await resp.text();
+  let result: any;
   try {
-    return JSON.parse(text);
+    result = JSON.parse(text);
   } catch {
-    console.error(`Bitrix API returned non-JSON (${resp.status}): ${text.substring(0, 200)}`);
-    throw new Error(`Bitrix24 retornou resposta inválida (HTTP ${resp.status}). Verifique o domínio e tokens.`);
+    console.error(`[Bitrix API Error] Non-JSON response (HTTP ${resp.status}): ${text.substring(0, 300)}`);
+    throw new Error(`Bitrix24 retornou resposta inválida (HTTP ${resp.status}).`);
   }
+
+  if (result.error) {
+    console.error(`[Bitrix API Error] ${method}: ${result.error_description || result.error}`);
+    // Special handling for expired tokens handled by refreshToken already, but log it here
+  }
+
+  return result;
 }
 
 // Resolve credentials: try bitrix_credentials first, fallback to bitrix_installations

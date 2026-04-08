@@ -16,25 +16,43 @@ async function bitrixApi(domain: string, token: string, method: string, params: 
   return res.json();
 }
 
-async function getTokenForCompany(supabase: any, companyId: string) {
-  const { data: creds } = await supabase
-    .from("bitrix_credentials")
-    .select("bitrix_domain, access_token")
-    .eq("company_id", companyId)
-    .maybeSingle();
+async function getTokenForCompany(supabase: any, companyId: string, memberId?: string) {
+  if (companyId) {
+    const { data: creds } = await supabase
+      .from("bitrix_credentials")
+      .select("bitrix_domain, access_token")
+      .eq("company_id", companyId)
+      .maybeSingle();
 
-  if (creds?.access_token) {
-    return { domain: creds.bitrix_domain, token: creds.access_token };
+    if (creds?.access_token) {
+      return { domain: creds.bitrix_domain, token: creds.access_token };
+    }
   }
 
-  const { data: install } = await supabase
-    .from("bitrix_installations")
-    .select("domain, access_token")
-    .eq("company_id", companyId)
-    .maybeSingle();
+  // Fallback to installations by company_id
+  if (companyId) {
+    const { data: install } = await supabase
+      .from("bitrix_installations")
+      .select("domain, access_token")
+      .eq("company_id", companyId)
+      .maybeSingle();
 
-  if (install?.access_token) {
-    return { domain: install.domain, token: install.access_token };
+    if (install?.access_token) {
+      return { domain: install.domain, token: install.access_token };
+    }
+  }
+
+  // Fallback to installations by memberId
+  if (memberId) {
+    const { data: install } = await supabase
+      .from("bitrix_installations")
+      .select("domain, access_token")
+      .eq("member_id", memberId)
+      .maybeSingle();
+
+    if (install?.access_token) {
+      return { domain: install.domain, token: install.access_token };
+    }
   }
 
   return null;
@@ -85,8 +103,8 @@ async function processCallEvent(
     USER_ID: bitrixUserId || 1,
     TYPE: direction === "outbound" ? 1 : 2,
     SHOW: 1,
-    CRM_CREATE: 1,
-    LINE_NUMBER: phoneNumber,
+    CRM_CREATE: 1, // Official suggestion: ensure entity is created if not exists
+    LINE_NUMBER: phoneNumber, // Can be overridden if a specific line is known
     CALL_START_DATE: new Date().toISOString(),
   };
 
