@@ -60,26 +60,42 @@ export default function BitrixApp() {
   };
 
   const tryLinkInstallation = async (userId: string) => {
-    const { data: membership } = await supabase
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
+    // When inside Bitrix iframe, check if this specific domain already has a company
+    // Do NOT reuse companies from other tenants
+    if (domain) {
+      const { data: existingInstall } = await supabase
+        .from('bitrix_installations')
+        .select('company_id')
+        .eq('domain', domain)
+        .not('company_id', 'is', null)
+        .maybeSingle();
 
-    if (membership?.company_id) {
-      if (memberId) {
-        await supabase
-          .from('bitrix_installations')
-          .update({ company_id: membership.company_id })
-          .eq('member_id', memberId);
+      if (existingInstall?.company_id) {
+        // This domain already has a company — use it
+        await ensureMembership(userId, existingInstall.company_id);
+        setCompanyId(existingInstall.company_id);
+        setStep('linked');
+        return;
       }
-      setCompanyId(membership.company_id);
-      setStep('linked');
-      return;
     }
 
-    // Auto-create company from domain name
+    // If no memberId (not in iframe context), try existing membership
+    if (!memberId) {
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.company_id) {
+        setCompanyId(membership.company_id);
+        setStep('linked');
+        return;
+      }
+    }
+
+    // Auto-create company from domain name (each tenant gets its own company)
     const derivedName = domain ? companyNameFromDomain(domain) : '';
     if (derivedName) {
       try {
@@ -100,10 +116,8 @@ export default function BitrixApp() {
       } catch (err: any) {
         console.error('Auto-create company failed:', err);
         setCompanyName(derivedName);
-        // Fall through to manual form
       }
     } else {
-      // Pre-fill with domain-derived name even if empty derivation
       const fallbackName = domain ? domain.split('.')[0] : '';
       setCompanyName(fallbackName);
     }
