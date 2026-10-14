@@ -1,48 +1,70 @@
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { PhoneIncoming, PhoneOutgoing, Play, Phone } from 'lucide-react';
+import { AlertCircle, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ClickToCall } from '@/components/calls/ClickToCall';
-import type { CallLog } from '@/types/voip';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToneBadge } from '@/components/common/Status';
+import type { CallLog } from '@/lib/api';
+import { CALL_STATUS, RECORDING_STATUS, SOURCE_LABEL, formatClock, formatDateTime } from '@/lib/format';
 
 interface CallLogTableProps {
-  callLogs: CallLog[];
+  calls: CallLog[] | undefined;
   isLoading?: boolean;
+  emptyMessage?: string;
 }
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  ringing: { label: 'Tocando', variant: 'outline' },
-  answered: { label: 'Atendida', variant: 'default' },
-  completed: { label: 'Completada', variant: 'default' },
-  missed: { label: 'Perdida', variant: 'destructive' },
-  busy: { label: 'Ocupado', variant: 'secondary' },
-  failed: { label: 'Falhou', variant: 'destructive' },
-};
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return '-';
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+function Direction({ direction }: { direction: CallLog['direction'] }) {
+  const inbound = direction === 'inbound';
+  const Icon = inbound ? PhoneIncoming : PhoneOutgoing;
+  return (
+    <span className="inline-flex items-center" title={inbound ? 'Recebida' : 'Realizada'}>
+      <Icon className={inbound ? 'h-4 w-4 text-success' : 'h-4 w-4 text-info'} aria-hidden="true" />
+      <span className="sr-only">{inbound ? 'Recebida' : 'Realizada'}</span>
+    </span>
+  );
 }
 
-export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
+function StatusCell({ call }: { call: CallLog }) {
+  const status = CALL_STATUS[call.status] ?? { label: call.status, tone: 'neutral' as const };
+  return (
+    <div className="flex items-center gap-1.5">
+      <ToneBadge tone={status.tone}>{status.label}</ToneBadge>
+      {call.error && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="rounded-sm text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Erro: ${call.error}`}>
+              <AlertCircle className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs break-words">{call.error}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
+function RecordingCell({ status }: { status: CallLog['recording_status'] }) {
+  if (!status) return <span className="text-muted-foreground">—</span>;
+  const rec = RECORDING_STATUS[status];
+  return <ToneBadge tone={rec.tone}>{rec.label}</ToneBadge>;
+}
+
+export function CallLogTable({ calls, isLoading, emptyMessage = 'As chamadas aparecerão aqui assim que forem feitas ou recebidas.' }: CallLogTableProps) {
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />))}
+      <div className="space-y-2" aria-busy="true" aria-label="Carregando chamadas">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Skeleton key={i} className="h-11 w-full" />
+        ))}
       </div>
     );
   }
 
-  if (callLogs.length === 0) {
+  if (!calls?.length) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
-        <Phone className="mb-4 h-12 w-12 text-muted-foreground" />
-        <p className="text-lg font-medium">Nenhuma chamada registrada</p>
-        <p className="text-sm text-muted-foreground">As chamadas aparecerão aqui conforme forem realizadas.</p>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-4 py-12 text-center">
+        <PhoneOff className="mb-3 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+        <p className="font-medium">Nenhuma chamada</p>
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }
@@ -52,43 +74,35 @@ export function CallLogTable({ callLogs, isLoading }: CallLogTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12"></TableHead>
+            <TableHead className="whitespace-nowrap">Data/hora</TableHead>
+            <TableHead className="w-10">
+              <span className="sr-only">Direção</span>
+            </TableHead>
             <TableHead>Número</TableHead>
-            <TableHead>Nome</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Duração</TableHead>
-            <TableHead>Data/Hora</TableHead>
-            <TableHead className="w-16"></TableHead>
+            <TableHead className="text-right">Duração</TableHead>
+            <TableHead>Origem</TableHead>
+            <TableHead>Gravação</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {callLogs.map((log) => {
-            const status = statusConfig[log.status] || { label: log.status, variant: 'outline' as const };
-            const DirectionIcon = log.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing;
-            const directionColor = log.direction === 'inbound' ? 'text-emerald-600' : 'text-blue-600';
-            return (
-              <TableRow key={log.id}>
-                <TableCell><DirectionIcon className={`h-4 w-4 ${directionColor}`} /></TableCell>
-                <TableCell className="font-mono">
-                  <div className="flex items-center gap-1">
-                    {log.phone_number}
-                    <ClickToCall phoneNumber={log.phone_number} />
-                  </div>
-                </TableCell>
-                <TableCell>{log.caller_name || '-'}</TableCell>
-                <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
-                <TableCell className="font-mono">{formatDuration(log.duration_seconds)}</TableCell>
-                <TableCell className="text-muted-foreground">{format(new Date(log.call_started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
-                <TableCell>
-                  {log.recording_url && (
-                    <Button variant="ghost" size="icon" asChild>
-                      <a href={log.recording_url} target="_blank" rel="noopener noreferrer"><Play className="h-4 w-4" /></a>
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {calls.map((call) => (
+            <TableRow key={call.id}>
+              <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(call.call_started_at)}</TableCell>
+              <TableCell>
+                <Direction direction={call.direction} />
+              </TableCell>
+              <TableCell className="whitespace-nowrap font-mono">{call.phone_number || '—'}</TableCell>
+              <TableCell>
+                <StatusCell call={call} />
+              </TableCell>
+              <TableCell className="text-right font-mono tabular-nums">{call.duration_seconds ? formatClock(call.duration_seconds) : '—'}</TableCell>
+              <TableCell className="whitespace-nowrap">{SOURCE_LABEL[call.source] ?? call.source}</TableCell>
+              <TableCell>
+                <RecordingCell status={call.recording_status} />
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>

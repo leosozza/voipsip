@@ -1,1 +1,0 @@
-ALTER TABLE public.bitrix_installations ALTER COLUMN domain DROP NOT NULL;

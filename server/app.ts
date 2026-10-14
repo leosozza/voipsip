@@ -71,7 +71,7 @@ app.get('/api/status', (c) => {
       hasClientId: !!s[K.clientId],
       tokenExpiresAt: s[K.expiresAt],
     },
-    events: pollerState,
+    events: { ...pollerState, enabled: getSetting('events.enabled') !== '0' },
     dial: {
       mode: calls.dialMode(),
       stripDdi: getSetting(DIAL.stripDdi) !== '0',
@@ -81,6 +81,8 @@ app.get('/api/status', (c) => {
     microsip: {
       supported: microsip.isWindows,
       exe: microsip.findExe(),
+      exePathSetting: getSetting(microsip.MS.exe),
+      recordingsDirSetting: getSetting(microsip.MS.recordingsDir),
       ini: microsip.iniStatus(),
       recordingsDir: microsip.recordingsDir(),
     },
@@ -323,5 +325,5 @@ function serveIndex(c: Context) {
   return c.html(fs.readFileSync(index, 'utf8'));
 }
 
-app.use('/*', serveStatic({ root: path.relative(process.cwd(), STATIC_DIR) || '.' }));
+app.use('/*', serveStatic({ root: STATIC_DIR }));
 app.get('*', (c) => (c.req.path.startsWith('/api/') ? c.json({ error: 'Not found' }, 404) : serveIndex(c)));

@@ -54,7 +54,7 @@ function updateCall(id: string, fields: Partial<CallRow>): void {
   const keys = Object.keys(fields);
   if (!keys.length) return;
   db.prepare(`UPDATE call_logs SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(
-    ...keys.map((k) => (fields as Record<string, any>)[k] ?? null),
+    ...keys.map((k) => (fields as Record<string, string | number | null>)[k] ?? null),
     id,
   );
   bus.emit({ type: 'call_updated', callId: id });
@@ -134,7 +134,7 @@ export function startOutboundFromBitrix(data: ExternalCallStart): CallRow {
   if (mode === 'microsip') {
     const result = microsip.dial(number);
     if (!result.ok) {
-      updateCall(row.id, { status: 'failed', error: result.error ?? null });
+      updateCall(row.id, { status: 'failed', error: result.error ?? null, call_ended_at: now() });
       void finishInBitrix(getCall(row.id)!, 'OTHER');
       return getCall(row.id)!;
     }

@@ -24,11 +24,15 @@ export interface Status {
     hasClientId: boolean;
     tokenExpiresAt: string | null;
   };
-  events: { running: boolean; lastPollAt: string | null; lastError: string | null; lastEventAt: string | null };
+  events: { running: boolean; enabled: boolean; lastPollAt: string | null; lastError: string | null; lastEventAt: string | null };
   dial: { mode: DialMode; stripDdi: boolean; prefix: string; crmCreate: boolean };
   microsip: {
     supported: boolean;
+    /** Detected or configured microsip.exe that exists on disk. */
     exe: string | null;
+    /** Raw values saved in settings (may point to a missing file). */
+    exePathSetting: string | null;
+    recordingsDirSetting: string | null;
     ini: { file: string | null; hooksConfigured: boolean; recordingPath: string | null };
     recordingsDir: string | null;
   };

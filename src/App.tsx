@@ -1,94 +1,50 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { AuthForm } from "@/components/auth/AuthForm";
-import Dashboard from "./pages/Dashboard";
-import Calls from "./pages/Calls";
-import Contacts from "./pages/Contacts";
-import Settings from "./pages/Settings";
-import BitrixCallback from "./pages/BitrixCallback";
-import BitrixApp from "./pages/BitrixApp";
-import BitrixSettingsPage from "./pages/BitrixSettingsPage";
-import MicroSipGuide from "./pages/MicroSipGuide";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { LoadingScreen } from '@/components/common/ScreenStates';
+import { AppShell } from '@/components/layout/AppShell';
 
-const queryClient = new QueryClient();
+// Route-level code splitting: the Bitrix24 iframe never downloads the softphone (sip.js).
+const DesktopRoot = lazy(() => import('@/components/layout/DesktopRoot').then((m) => ({ default: m.DesktopRoot })));
+const BitrixApp = lazy(() => import('@/pages/BitrixApp'));
+const Calls = lazy(() => import('@/pages/Calls'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Guide = lazy(() => import('@/pages/Guide'));
+const Logs = lazy(() => import('@/pages/Logs'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Setup = lazy(() => import('@/pages/Setup'));
 
-function ProtectedApp() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/calls" element={<Calls />} />
-        <Route path="/contacts" element={<Contacts />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/guide/microsip" element={<MicroSipGuide />} />
-        <Route path="/bitrix/callback" element={<BitrixCallback />} />
-        <Route path="/bitrix/app" element={<BitrixApp />} />
-        <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
-        <Route path="*" element={<NotFound />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-function AppContent() {
-  const { isLoading, isAuthenticated } = useAuth();
-
-  // Check if current path is a Bitrix iframe route (no auth required)
-  const isBitrixRoute = window.location.pathname.startsWith('/bitrix/');
-  const isResetPassword = window.location.pathname === '/reset-password';
-
-  if (isBitrixRoute) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/bitrix/app" element={<BitrixApp />} />
-          <Route path="/bitrix/settings" element={<BitrixSettingsPage />} />
-          <Route path="/bitrix/callback" element={<BitrixCallback />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
-
-  if (isResetPassword) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/reset-password" element={<ResetPassword />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <AuthForm />;
-  }
-
-  return <ProtectedApp />;
-}
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 2_000 } },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AppContent />
+    <TooltipProvider delayDuration={200}>
+      <Toaster position="top-right" closeButton />
+      <BrowserRouter>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* Shown by Bitrix24 inside its iframe: compact, no softphone. */}
+            <Route path="/bitrix/app" element={<BitrixApp />} />
+
+            <Route element={<DesktopRoot />}>
+              <Route path="/setup" element={<Setup />} />
+              <Route element={<AppShell />}>
+                <Route index element={<Dashboard />} />
+                <Route path="/calls" element={<Calls />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/guide" element={<Guide />} />
+                <Route path="/logs" element={<Logs />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

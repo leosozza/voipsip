@@ -1,458 +1,95 @@
-# MicroSip Connector para Bitrix24
+# VoipSip Connector para Bitrix24
 
-Conector de telefonia que integra o MicroSip com o Bitrix24 CRM, permitindo Click-to-Call, registro automático de chamadas e identificação de contatos.
+Conector de telefonia que liga o **MicroSIP** (ou um softphone WebRTC embutido) ao **Bitrix24**: clique para ligar a partir do CRM, popup de chamada recebida, registro automático das chamadas e upload das gravações.
 
-## Desenvolvedor
+Roda **localmente** no PC de cada atendente, sem servidor, sem banco na nuvem e sem mensalidade. Qualquer empresa que use Bitrix24 instala e configura em poucos minutos.
 
-**Thoth24** - Parceiro Bitrix24  
-Website: [thoth24.com.br](https://thoth24.com.br)
-
----
-
-## Índice
-
-1. [Visão Geral](#visão-geral)
-2. [Arquitetura](#arquitetura)
-3. [Funcionalidades](#funcionalidades)
-4. [Fluxo de Instalação](#fluxo-de-instalação)
-5. [Fluxo de Chamadas](#fluxo-de-chamadas)
-6. [Edge Functions](#edge-functions)
-7. [Estrutura do Banco de Dados](#estrutura-do-banco-de-dados)
-8. [Configuração no Marketplace](#configuração-no-marketplace)
-9. [Tecnologias](#tecnologias)
+Desenvolvido por **[Thoth24](https://thoth24.com.br)**, parceiro Bitrix24.
 
 ---
 
-## Visão Geral
-
-Este conector permite que empresas utilizem o MicroSip diretamente integrado ao Bitrix24 CRM, sem necessidade do SIP nativo do Bitrix. O sistema é **multi-tenant**, permitindo que múltiplas empresas configurem suas próprias credenciais.
-
-### Principais Benefícios
-
-- **Click-to-Call**: Clique em qualquer número no Bitrix24 para iniciar chamada
-- **Popup de Chamadas**: Chamadas recebidas exibem popup com dados do CRM
-- **Registro Automático**: Todas as chamadas são registradas no histórico do contato
-- **Gravações**: Links de gravação anexados automaticamente às atividades
-
----
-
-## Arquitetura
+## Como funciona
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           BITRIX24 CRM                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐  │
-│  │ Click-to-   │  │   Popup     │  │    Histórico de Chamadas    │  │
-│  │    Call     │  │  Inbound    │  │    (CRM Activities)         │  │
-│  └──────┬──────┘  └──────▲──────┘  └──────────────▲──────────────┘  │
-│         │                │                         │                 │
-│         │ ONEXTERNALCALLSTART    telephony.externalcall.register    │
-│         │                │         telephony.externalcall.finish     │
-└─────────┼────────────────┼─────────────────────────┼─────────────────┘
-          │                │                         │
-          ▼                │                         │
-┌─────────────────────────────────────────────────────────────────────┐
-│                        SUPABASE (Backend)                            │
-│                                                                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ bitrix-events    │  │ bitrix-sync      │  │  bitrix-install  │   │
-│  │  (Webhooks)      │  │ (Call Sync)      │  │  (Install/Config)│   │
-│  └────────┬─────────┘  └────────▲─────────┘  └──────────────────┘   │
-│           │                     │                                    │
-│           │    ┌────────────────┴────────────────┐                  │
-│           │    │         BANCO DE DADOS          │                  │
-│           │    │  - companies                    │                  │
-│           │    │  - bitrix_credentials            │                  │
-│           │    │  - bitrix_installations          │                  │
-│           │    │  - sip_accounts                  │                  │
-│           │    │  - call_logs                    │                  │
-│           │    │  - external_phone_lines         │                  │
-│           │    └─────────────────────────────────┘                  │
-│           │                                                          │
-└───────────┼──────────────────────────────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                           MICROSIP                                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐  │
-│  │   SIP       │  │  WebRTC     │  │       Configuração          │  │
-│  │   Client    │  │  Softphone  │  │    (Contas SIP)             │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
+ Bitrix24 (nuvem)                         PC do atendente
+┌──────────────────────┐                 ┌──────────────────────────────────────────┐
+│ Clique num telefone  │  fila offline   │  VoipSip Connector (app na bandeja)       │
+│ ONEXTERNALCALLSTART ─┼───────────────▶ │   • lê a fila (event.offline.*)          │
+│                      │   (polling)     │   • servidor local http://localhost:5180 │
+│ Popup / Histórico   ◀┼──── REST ────── │   • SQLite com histórico e configurações │
+│ telephony.externalCall.register/finish │         │                    ▲            │
+│ attachRecord (gravação)                │   discar│        eventos de  │chamada     │
+└──────────────────────┘                 │         ▼        chamada (.vbs)            │
+                                         │   MicroSIP  ─────────┘   ou WebRTC (sip.js)│
+                                         └──────────────────────────────────────────┘
 ```
 
-### Componentes Principais
+- **Saída (clique para ligar):** o Bitrix24 coloca o `ONEXTERNALCALLSTART` numa fila. O conector lê a fila, pega só os eventos do usuário daquele PC e disca no MicroSIP (`microsip.exe <número>`) ou no softphone embutido. A chamada já vem registrada pelo Bitrix24 (`CALL_ID`).
+- **Entrada:** o MicroSIP executa um script a cada evento (`cmdIncomingCall`, `cmdCallAnswer`, `cmdCallEnd`…). O conector registra a chamada no Bitrix24 com popup do CRM e a finaliza com duração e status.
+- **Gravações:** ao final da chamada, o arquivo `.mp3`/`.wav` é lido da pasta do MicroSIP e enviado em base64 com `telephony.externalCall.attachRecord`. Não é preciso PABX na nuvem nem webhook público.
+- **Números BR:** o DDI 55 é removido na discagem (configurável), e o número original fica no Bitrix24.
 
-| Componente | Descrição |
-|------------|-----------|
-| **Frontend React** | Interface de configuração embutida via iframe no Bitrix24 |
-| **Edge Functions** | Processamento de webhooks e integração com APIs |
-| **Banco de Dados** | Armazenamento de credenciais, mapeamentos e logs |
-| **SDK Bitrix24** | Biblioteca JavaScript oficial para comunicação com o CRM |
+Como o Bitrix24 não consegue chamar `localhost`, o conector usa [eventos offline](https://apidocs.bitrix24.com/api-reference/events/offline-events.html) em vez de webhooks. A autorização é feita por OAuth de um **aplicativo local** criado no próprio portal, e o redirecionamento volta para `http://localhost:5180`.
 
----
+## Instalação (usuário final)
 
-## Funcionalidades
+1. Baixe o instalador na página de [Releases](../../releases) (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) e instale.
+2. No Bitrix24 (administrador): **Aplicativos → Recursos do desenvolvedor → Outros → Aplicativo local**
+   - Tipo: **Servidor**
+   - Caminho do seu manipulador: `http://localhost:5180/bitrix/app`
+   - Caminho de instalação inicial: **vazio**
+   - Permissões: **Telefonia**, **CRM**, **Usuários**
+   - Salve e copie o **client_id** e o **client_secret**.
+3. Abra o VoipSip Connector, informe o endereço do portal, o client_id e o client_secret, e clique em **Conectar**. O navegador pede a autorização no Bitrix24 e volta para o app.
+4. Escolha o softphone:
+   - **MicroSIP (Windows):** feche o MicroSIP e clique em *Configurar MicroSIP automaticamente*. O app grava os ganchos de evento e ativa a gravação no `microsip.ini`.
+   - **WebRTC embutido:** cadastre a conta SIP. O PABX precisa aceitar SIP sobre WebSocket seguro (WSS).
+5. No Bitrix24: **Telefonia → Configurações → Número padrão para chamadas de saída** → escolha a linha **VoipSip MicroSIP**.
 
-### 1. Click-to-Call (Chamadas de Saída)
+Pronto: clique em qualquer telefone do CRM e a chamada sai pelo seu ramal.
 
-Quando o usuário clica em um número no Bitrix24:
+> Cada atendente instala o app no próprio PC e conecta com o **próprio usuário** do Bitrix24. O app só atende os cliques desse usuário.
 
-1. Bitrix24 dispara evento `ONEXTERNALCALLSTART` para nosso webhook
-2. Webhook identifica o usuário e busca sua conta SIP
-3. Chamada é originada via softphone MicroSip
-4. Telefone do agente toca primeiro, depois conecta ao destino
+## Desenvolvimento
 
-### 2. Popup de Chamadas Recebidas
+Requisitos: Node 22+.
 
-Quando uma chamada chega no ramal:
-
-1. Evento de chamada recebido
-2. Sistema identifica o ramal e busca usuário Bitrix correspondente
-3. Chama `telephony.externalcall.register` com `SHOW=1`
-4. Popup aparece no Bitrix24 com dados do contato
-
-### 3. Registro de Chamadas
-
-Ao término de cada chamada:
-
-1. Evento de finalização recebido
-2. Sistema calcula duração e status (atendida/perdida)
-3. Chama `telephony.externalcall.finish` com dados da chamada
-4. Link de gravação é anexado à atividade do CRM
-
-### 4. Sincronização de Usuários
-
-- Busca automática de usuários ativos do Bitrix24
-- Extração de ramal a partir das configurações do telefone interno
-- Mapeamento automático ramal ↔ usuário
-
----
-
-## Fluxo de Instalação
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  1. INSTALAÇÃO DO APP                                                 │
-│                                                                       │
-│  Usuário instala app via Marketplace Bitrix24                        │
-│         │                                                             │
-│         ▼                                                             │
-│  ┌─────────────────────────────────────────────────────────────┐     │
-│  │ bitrix-install                                              │     │
-│  │  - Recebe ONAPPINSTALL com tokens OAuth                     │     │
-│  │  - Salva instalação (domain, member_id, tokens)             │     │
-│  │  - Exibe página de sucesso com BX24.installFinish()         │     │
-│  └─────────────────────────────────────────────────────────────┘     │
-│         │                                                             │
-│         ▼                                                             │
-│  Usuário é redirecionado para interface do app no iframe             │
-└──────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────┐
-│  2. CONFIGURAÇÃO                                                      │
-│                                                                       │
-│  Usuário configura contas SIP e linhas externas                      │
-│         │                                                             │
-│         ▼                                                             │
-│  ┌─────────────────────────────────────────────────────────────┐     │
-│  │ Página de Settings (/bitrix/settings)                       │     │
-│  │  - Vincula portal à empresa na plataforma                   │     │
-│  │  - Configura contas SIP para softphone                      │     │
-│  │  - Registra linhas externas no Bitrix24                     │     │
-│  │  - Vincula eventos de telefonia                             │     │
-│  └─────────────────────────────────────────────────────────────┘     │
-│         │                                                             │
-│         ▼                                                             │
-│  Sistema pronto para uso!                                            │
-└──────────────────────────────────────────────────────────────────────┘
+```bash
+npm install
+npm run dev          # servidor local (5180) + Vite (8080) com proxy
+npm test             # testes da UI (jsdom) e do servidor (node)
+npm run electron:dev # app desktop apontando para o build local
+npm run dist:win     # instalador Windows em release/ (dist:mac, dist:linux)
 ```
 
-### Auto-Vinculação de Tenant
+Para publicar uma versão, crie uma tag `vX.Y.Z` e faça push. O workflow `.github/workflows/release.yml` gera os instaladores e cria um rascunho de Release.
 
-O sistema detecta automaticamente o `member_id` do portal Bitrix24 e vincula à empresa correspondente. Isso permite:
+### Estrutura
 
-- Múltiplos usuários do mesmo portal compartilham a mesma configuração
-- Não é necessário criar empresa manualmente
-- Configurações persistem entre sessões
+| Caminho | O que é |
+|---|---|
+| `server/` | Servidor local (Hono + `node:sqlite`): OAuth, cliente REST do Bitrix24, polling de eventos offline, MicroSIP, histórico |
+| `server/app.ts` | Todas as rotas HTTP (`/api/*`, `/bitrix/app`, `/hook/microsip/*`) |
+| `server/calls.ts` | Ciclo de vida das chamadas (registrar, atender, finalizar, gravação) |
+| `server/events.ts` | Leitura da fila offline, segura com vários PCs no mesmo portal |
+| `server/microsip.ts` | Discagem, `microsip.ini`, scripts de evento e gravações |
+| `electron/main.ts` | App desktop: janela, bandeja, iniciar com o sistema |
+| `src/` | Interface React (Vite + shadcn/ui) |
+| `src/lib/api.ts` | Cliente tipado da API local |
+| `src/lib/webrtc-phone.ts` | Softphone WebRTC (sip.js) |
 
----
+Os dados ficam em `%APPDATA%\VoipSip Connector` (Windows), `~/Library/Application Support/VoipSip Connector` (macOS) ou `~/.config/VoipSip Connector` (Linux).
 
-## Fluxo de Chamadas
+### Segurança
 
-### Chamada de Saída (Click-to-Call)
+- O servidor escuta só em `127.0.0.1`, recusa `Host` diferente de localhost (proteção contra DNS rebinding) e exige o cabeçalho `x-voipsip` em chamadas que alteram estado, o que impede outros sites de usar a API.
+- Os ganchos do MicroSIP usam um token aleatório por instalação.
+- Tokens recebidos do iframe do Bitrix24 são validados no portal antes de serem salvos, e o app nunca mistura dois portais.
 
-```
-Bitrix24                    Backend                         MicroSip
-   │                           │                               │
-   │ 1. Click no número        │                               │
-   │──────────────────────────►│                               │
-   │   ONEXTERNALCALLSTART     │                               │
-   │                           │ 2. Busca mapeamento           │
-   │                           │    usuário → conta SIP        │
-   │                           │                               │
-   │                           │ 3. Origina chamada            │
-   │                           │──────────────────────────────►│
-   │                           │                               │
-   │ 4. register (TYPE=1)      │                               │
-   │◄──────────────────────────│                               │
-   │   (Atualiza status)       │                               │
-   │                           │                               │
-   │                           │ 5. Chamada finalizada         │
-   │                           │◄──────────────────────────────│
-   │                           │                               │
-   │ 6. finish                 │                               │
-   │◄──────────────────────────│                               │
-   │   (Registra no CRM)       │                               │
-```
+## Pontos a validar em portal real
 
-### Chamada Recebida (Inbound)
-
-```
-MicroSip                    Backend                         Bitrix24
-   │                           │                               │
-   │ 1. Chamada recebida       │                               │
-   │──────────────────────────►│                               │
-   │                           │ 2. Identifica ramal           │
-   │                           │    Busca usuário Bitrix       │
-   │                           │                               │
-   │                           │ 3. register (SHOW=1, TYPE=2)  │
-   │                           │──────────────────────────────►│
-   │                           │                               │
-   │                           │              4. Popup aparece │
-   │                           │                  com CRM card │
-   │                           │                               │
-   │ 5. Chamada finalizada     │                               │
-   │──────────────────────────►│                               │
-   │                           │ 6. finish                     │
-   │                           │──────────────────────────────►│
-   │                           │                               │
-   │                           │         7. Atividade criada   │
-   │                           │            com gravação       │
-```
-
----
-
-## Edge Functions
-
-| Função | Propósito | JWT |
-|--------|-----------|-----|
-| `bitrix-install` | Processa instalação do app (ONAPPINSTALL) | ❌ |
-| `bitrix-sync` | Sincronização de chamadas com Bitrix24 | ❌ |
-| `bitrix-events` | Recebe webhooks de eventos Bitrix24 | ❌ |
-| `bitrix-oauth-callback` | Callback OAuth Bitrix24 | ❌ |
-| `bitrix-client-id` | Retorna Client ID para OAuth | ❌ |
-
----
-
-## Estrutura do Banco de Dados
-
-### Tabelas
-
-```sql
--- Empresas (tenants)
-CREATE TABLE companies (
-  id UUID PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
-);
-
--- Membros da empresa (usuários)
-CREATE TABLE company_members (
-  id UUID PRIMARY KEY,
-  company_id UUID REFERENCES companies,
-  user_id UUID,
-  role TEXT,
-  created_at TIMESTAMPTZ
-);
-
--- Credenciais Bitrix24
-CREATE TABLE bitrix_credentials (
-  id UUID PRIMARY KEY,
-  company_id UUID UNIQUE REFERENCES companies,
-  bitrix_domain TEXT NOT NULL,
-  access_token TEXT,
-  refresh_token TEXT,
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
-);
-
--- Instalações Bitrix24
-CREATE TABLE bitrix_installations (
-  id UUID PRIMARY KEY,
-  member_id TEXT UNIQUE NOT NULL,
-  domain TEXT NOT NULL,
-  company_id UUID REFERENCES companies,
-  access_token TEXT,
-  refresh_token TEXT,
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
-);
-
--- Contas SIP
-CREATE TABLE sip_accounts (
-  id UUID PRIMARY KEY,
-  company_id UUID REFERENCES companies,
-  display_name TEXT,
-  sip_server TEXT NOT NULL,
-  sip_username TEXT NOT NULL,
-  sip_password TEXT NOT NULL,
-  sip_domain TEXT,
-  ws_port INTEGER,
-  transport TEXT,
-  is_default BOOLEAN,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
-);
-
--- Linhas telefônicas externas
-CREATE TABLE external_phone_lines (
-  id UUID PRIMARY KEY,
-  company_id UUID REFERENCES companies,
-  line_number TEXT NOT NULL,
-  line_name TEXT,
-  is_default BOOLEAN,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
-);
-
--- Logs de chamadas
-CREATE TABLE call_logs (
-  id UUID PRIMARY KEY,
-  company_id UUID REFERENCES companies,
-  external_line_id UUID REFERENCES external_phone_lines,
-  direction TEXT,
-  phone_number TEXT NOT NULL,
-  status TEXT,
-  duration_seconds INTEGER,
-  recording_url TEXT,
-  sip_call_id TEXT,
-  caller_name TEXT,
-  call_started_at TIMESTAMPTZ,
-  call_ended_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ
-);
-
--- Eventos Bitrix24
-CREATE TABLE bitrix_events (
-  id UUID PRIMARY KEY,
-  company_id UUID REFERENCES companies,
-  event_type TEXT NOT NULL,
-  status TEXT,
-  phone_number TEXT,
-  bitrix_user_id TEXT,
-  call_id TEXT,
-  crm_entity_type TEXT,
-  crm_entity_id TEXT,
-  raw_data JSONB,
-  processed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ
-);
-```
-
----
-
-## Configuração no Marketplace
-
-### URLs de Configuração
-
-Configure no Marketplace do Bitrix24:
-
-| Campo | URL |
-|-------|-----|
-| **Initial install path** | `https://[SUPABASE_URL]/functions/v1/bitrix-install` |
-| **Application URL** | `https://voipsip.lovable.app/bitrix/app` |
-| **Settings path** | `https://voipsip.lovable.app/bitrix/settings` |
-
-### Permissões Necessárias
-
-- `telephony` - Gerenciamento de telefonia
-- `crm` - Acesso ao CRM para registro de atividades
-- `user` - Leitura de usuários para mapeamento
-
-### Eventos de Telefonia
-
-- `ONEXTERNALCALLSTART` - Click-to-Call
-- `ONEXTERNALCALLBACKSTART` - Callback externo
-
----
-
-## Tecnologias
-
-### Frontend
-
-| Tecnologia | Versão | Uso |
-|------------|--------|-----|
-| React | 18.3 | Framework UI |
-| TypeScript | 5.x | Tipagem estática |
-| Vite | 5.x | Build tool |
-| Tailwind CSS | 3.x | Estilização |
-| shadcn/ui | - | Componentes UI |
-| React Query | 5.x | Cache e fetch |
-| React Router | 6.x | Roteamento |
-| sip.js | 0.21 | Softphone WebRTC |
-
-### Backend
-
-| Tecnologia | Uso |
-|------------|-----|
-| Supabase | Banco de dados PostgreSQL + Auth |
-| Edge Functions (Deno) | Serverless functions |
-| Row Level Security | Segurança multi-tenant |
-
-### Integrações
-
-| API | Documentação |
-|-----|--------------|
-| Bitrix24 REST API | [rest.bitrix24.com](https://training.bitrix24.com/rest_help/) |
-
----
-
-## Estrutura de Diretórios
-
-```
-├── src/
-│   ├── components/
-│   │   ├── auth/           # Componentes de autenticação
-│   │   ├── calls/          # Tabela de logs e click-to-call
-│   │   ├── dashboard/      # Métricas e gráficos
-│   │   ├── layout/         # Layout principal
-│   │   ├── settings/       # Configurações Bitrix24
-│   │   ├── softphone/      # Softphone WebRTC
-│   │   └── ui/             # Componentes shadcn/ui
-│   ├── hooks/              # Custom hooks
-│   ├── integrations/
-│   │   └── supabase/       # Cliente Supabase
-│   ├── pages/              # Páginas da aplicação
-│   └── types/              # Definições TypeScript
-│
-├── supabase/
-│   ├── functions/          # Edge Functions
-│   │   ├── bitrix-install/
-│   │   ├── bitrix-sync/
-│   │   ├── bitrix-events/
-│   │   ├── bitrix-client-id/
-│   │   ├── bitrix-oauth-callback/
-│   │   └── ...
-│   └── config.toml         # Configuração Supabase
-│
-├── public/                 # Assets estáticos
-└── index.html              # Entry point
-```
-
----
-
-## Licença
-
-Proprietário - Thoth24
-
-Este software é de propriedade exclusiva da Thoth24. Todos os direitos reservados.
-
----
-
-## Suporte
-
-Para suporte técnico, entre em contato com a Thoth24.
+- **Conteúdo do `EVENT_DATA`** dos eventos offline de telefonia. O código aceita formato plano ou `{data: {...}}`, e o evento bruto fica em *Diagnóstico*.
+- **Permissão de `event.offline.*`** para usuários que não são administradores. A documentação marca o escopo como *administrator*. Se falhar para atendentes comuns, o próximo passo é um modo "central", em que o PC de um admin distribui os cliques pela rede local.
+- **Limite de requisições:** cada PC consulta a fila a cada 2 s (`VOIPSIP_POLL_MS`). Com muitos PCs no mesmo portal, aumente o intervalo ou use o modo central.
+- **Nomes exatos dos comandos do MicroSIP** (`cmdCallStart`/`cmdCallEnd`…) na versão instalada.
+- Gravações do softphone WebRTC ainda não são enviadas: o Bitrix24 aceita só mp3/wav.

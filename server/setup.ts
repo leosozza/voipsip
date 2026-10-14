@@ -48,7 +48,7 @@ export async function completeOAuth(params: { code: string; state: string; domai
     code: params.code,
   }).toString();
   const res = await fetch(url);
-  const data = (await res.json()) as Record<string, any>;
+  const data = (await res.json()) as bitrix.TokenResponse;
   if (data.error) throw new bitrix.BitrixError(String(data.error), data.error_description);
 
   const domain = data.client_endpoint ? new URL(data.client_endpoint).host : params.domain || getSetting(K.domain)!;
@@ -65,13 +65,18 @@ export async function completeOAuth(params: { code: string; state: string; domai
 /** Tokens handed to us by the Bitrix24 iframe (BX24.getAuth or the handler POST). */
 export async function acceptIframeAuth(auth: bitrix.IframeAuth): Promise<void> {
   if (!auth?.access_token || !auth.domain || !auth.member_id) throw new bitrix.BitrixError('BAD_AUTH', 'Dados de autorização incompletos.');
+  // The handler URL accepts cross-site POSTs, so only refresh tokens for the portal the
+  // user already chose in the app; never let a frame link this PC to another portal.
+  const configured = getSetting(K.domain);
+  if (!configured) throw new bitrix.BitrixError('NOT_CONFIGURED', 'Conecte o portal pelo VoipSip Connector primeiro.');
+  if (normalizePortal(auth.domain) !== configured) throw new bitrix.BitrixError('PORTAL_MISMATCH', `Este conector está vinculado a ${configured}.`);
   // Verify the token against the claimed portal before trusting it.
   const res = await fetch(`https://${normalizePortal(auth.domain)}/rest/app.info.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ auth: auth.access_token }),
   });
-  const info = (await res.json().catch(() => ({}))) as Record<string, any>;
+  const info = (await res.json().catch(() => ({}))) as bitrix.RestResponse<unknown>;
   if (info.error || !info.result) throw new bitrix.BitrixError('BAD_AUTH', 'Token do Bitrix24 inválido.');
   const firstTime = !getSetting(K.userId);
   bitrix.saveIframeAuth({ ...auth, domain: normalizePortal(auth.domain) });

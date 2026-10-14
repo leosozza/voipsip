@@ -22,6 +22,24 @@ export const K = {
   lineNumber: 'bitrix.line_number',
 } as const;
 
+/** Response of oauth.bitrix.info/oauth/token/. */
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in?: number | string;
+  member_id?: string;
+  client_endpoint?: string;
+  error?: string;
+  error_description?: string;
+}
+
+/** Envelope of every Bitrix24 REST response. */
+export interface RestResponse<T> {
+  result?: T;
+  error?: string;
+  error_description?: string;
+}
+
 export class BitrixError extends Error {
   constructor(public code: string, description?: string) {
     super(description ? `${code}: ${description}` : code);
@@ -77,7 +95,7 @@ async function refreshTokens(): Promise<void> {
       refresh_token: refreshToken,
     }).toString();
     const res = await fetch(url);
-    const data = (await res.json()) as Record<string, any>;
+    const data = (await res.json()) as TokenResponse;
     if (data.error) throw new BitrixError(String(data.error), data.error_description);
     setSetting(K.accessToken, data.access_token);
     setSetting(K.refreshToken, data.refresh_token);
@@ -100,7 +118,7 @@ async function validToken(): Promise<string> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function call<T = any>(method: string, params: Record<string, unknown> = {}, attempt = 0): Promise<T> {
+export async function call<T = unknown>(method: string, params: Record<string, unknown> = {}, attempt = 0): Promise<T> {
   const domain = getSetting(K.domain);
   if (!domain) throw new BitrixError('NOT_CONNECTED', 'Conector ainda não vinculado ao Bitrix24.');
   const auth = await validToken();
@@ -110,7 +128,7 @@ export async function call<T = any>(method: string, params: Record<string, unkno
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ ...params, auth }),
   });
-  const data = (await res.json().catch(() => ({ error: 'BAD_RESPONSE', error_description: `HTTP ${res.status}` }))) as Record<string, any>;
+  const data = (await res.json().catch(() => ({ error: 'BAD_RESPONSE', error_description: `HTTP ${res.status}` }))) as RestResponse<T>;
 
   if (data.error) {
     const code = String(data.error);

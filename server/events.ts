@@ -18,11 +18,20 @@ export const CALL_EVENTS = ['ONEXTERNALCALLSTART', 'ONEXTERNALCALLBACKSTART'] as
 const POLL_MS = Number(process.env.VOIPSIP_POLL_MS || 2000);
 const STALE_MS = 5 * 60_000;
 
+interface CallEventData {
+  PHONE_NUMBER?: string;
+  USER_ID?: string | number;
+  CALL_ID?: string;
+  CRM_ENTITY_TYPE?: string;
+  CRM_ENTITY_ID?: string;
+  data?: CallEventData;
+}
+
 interface OfflineEvent {
   ID: string;
   TIMESTAMP_X: string;
   EVENT_NAME: string;
-  EVENT_DATA: Record<string, any> | false;
+  EVENT_DATA: CallEventData | false;
   MESSAGE_ID: string;
 }
 
@@ -49,7 +58,7 @@ export async function bindCallEvents(): Promise<Record<string, unknown>> {
 }
 
 /** EVENT_DATA shape for telephony offline events is not documented; accept both flat and {data: {...}}. */
-function eventData(ev: OfflineEvent): Record<string, any> {
+function eventData(ev: OfflineEvent): CallEventData {
   const raw = ev.EVENT_DATA || {};
   return raw.data && typeof raw.data === 'object' ? raw.data : raw;
 }
