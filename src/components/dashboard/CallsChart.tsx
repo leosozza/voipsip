@@ -1,59 +1,49 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CallLog } from '@/types/voip';
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { CallStats } from '@/lib/api';
+import { buildChartData } from '@/lib/stats';
 
-interface CallsChartProps {
-  callLogs: CallLog[];
-  isLoading?: boolean;
-}
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export function CallsChart({ callLogs, isLoading }: CallsChartProps) {
-  const chartData = useMemo(() => {
-    const last7Days: Record<string, { date: string; inbound: number; outbound: number }> = {};
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const key = date.toISOString().split('T')[0];
-      const dayLabel = date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
-      last7Days[key] = { date: dayLabel, inbound: 0, outbound: 0 };
-    }
-    callLogs.forEach((log) => {
-      const key = log.call_started_at.split('T')[0];
-      if (last7Days[key]) {
-        if (log.direction === 'inbound') last7Days[key].inbound++;
-        else last7Days[key].outbound++;
-      }
-    });
-    return Object.values(last7Days);
-  }, [callLogs]);
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader><CardTitle>Chamadas por Dia</CardTitle></CardHeader>
-        <CardContent><div className="h-[300px] animate-pulse rounded bg-muted" /></CardContent>
-      </Card>
-    );
-  }
+export function CallsChart({ perDay, days = 7, isLoading }: { perDay?: CallStats['perDay']; days?: number; isLoading?: boolean }) {
+  const data = useMemo(() => buildChartData(perDay ?? [], days), [perDay, days]);
+  const animate = !prefersReducedMotion();
 
   return (
     <Card>
-      <CardHeader><CardTitle>Chamadas por Dia</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="text-base">Chamadas por dia</CardTitle>
+        <CardDescription>Últimos {days} dias</CardDescription>
+      </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="date" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-              <Legend />
-              <Bar dataKey="inbound" name="Recebidas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="outbound" name="Realizadas" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {isLoading ? (
+          <Skeleton className="h-[260px] w-full" />
+        ) : (
+          <div className="h-[260px]" role="img" aria-label={`Gráfico de chamadas recebidas e realizadas nos últimos ${days} dias`}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ left: -16, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'hsl(var(--muted))' }}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    color: 'hsl(var(--popover-foreground))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: 12,
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="inbound" name="Recebidas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} isAnimationActive={animate} />
+                <Bar dataKey="outbound" name="Realizadas" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} isAnimationActive={animate} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

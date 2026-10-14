@@ -1,0 +1,31 @@
+appId: br.com.thoth24.voipsip
+productName: VoipSip Connector
+directories:
+  output: release
+# Main process and server are bundled by esbuild, the UI by Vite: no node_modules needed at runtime.
+files:
+  - dist-electron/**/*
+  - package.json
+  - "!node_modules/**/*"
+extraResources:
+  - from: dist
+    to: ui
+  - from: build/icon.png
+    to: icon.png
+icon: build/icon.png
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: VoipSip Connector
+mac:
+  target: dmg
+  category: public.app-category.business
+linux:
+  target: AppImage
+  category: Office
+publish:
+  provider: github
+  releaseType: draft

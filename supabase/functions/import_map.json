@@ -1,7 +1,0 @@
-{
-  "imports": {
-    "https://esm.sh/@supabase/supabase-js@2.93.2": "https://esm.sh/@supabase/supabase-js@2.93.2",
-    "https://esm.sh/@supabase/auth-helpers-nextjs": "https://esm.sh/@supabase/auth-helpers-nextjs",
-    "std/": "https://deno.land/std@0.262.0/"
-  }
-}

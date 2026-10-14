@@ -1,100 +1,50 @@
 /**
- * Shared utility for resolving Bitrix24 context in iframe pages.
+ * Bitrix24 JS SDK (BX24) helpers for the view shown inside the portal iframe.
  */
+
+export interface BX24Auth {
+  domain: string;
+  member_id: string;
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+}
 
 declare global {
   interface Window {
     BX24?: {
       init: (callback: () => void) => void;
       fitWindow: () => void;
-      getAuth: () => { domain: string; member_id: string; access_token: string } | null;
+      getAuth: () => BX24Auth | false | null;
       getDomain: () => string;
       isAdmin: () => boolean;
     };
   }
 }
 
-export interface BitrixContext {
-  domain: string;
-  memberId: string;
-}
-
-function getParam(params: URLSearchParams, ...keys: string[]): string {
-  for (const k of keys) {
-    const v = params.get(k);
-    if (v) return v;
-  }
-  return '';
-}
-
 export function loadBX24Script(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.BX24) { resolve(); return; }
+    if (window.BX24) {
+      resolve();
+      return;
+    }
     const script = document.createElement('script');
-    script.src = '//api.bitrix24.com/api/v1/';
+    script.src = 'https://api.bitrix24.com/api/v1/';
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load BX24 SDK'));
+    script.onerror = () => reject(new Error('Não foi possível carregar o SDK do Bitrix24'));
     document.head.appendChild(script);
   });
 }
 
-/**
- * Resolve Bitrix context from query params + BX24 SDK.
- * Returns domain and memberId with multiple fallbacks.
- */
-export async function resolveBitrixContext(searchParams: URLSearchParams): Promise<BitrixContext> {
-  let domain = getParam(searchParams, 'DOMAIN', 'domain');
-  let memberId = getParam(searchParams, 'member_id', 'MEMBER_ID');
-
-  try {
-    await loadBX24Script();
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => resolve(), 3000);
-      try {
-        window.BX24?.init(() => {
-          clearTimeout(timeout);
-          window.BX24?.fitWindow();
-          const auth = window.BX24?.getAuth();
-          if (auth) {
-            if (!domain) domain = auth.domain;
-            if (!memberId) memberId = auth.member_id;
-          }
-          if (!domain) {
-            try {
-              const d = window.BX24?.getDomain?.();
-              if (d) domain = d;
-            } catch { /* ignore */ }
-          }
-          resolve();
-        });
-      } catch {
-        clearTimeout(timeout);
-        resolve();
-      }
+/** Loads BX24 and waits for init. Resolves to the portal auth, or null when not inside Bitrix24. */
+export async function initBX24(timeoutMs = 4000): Promise<BX24Auth | null> {
+  await loadBX24Script();
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(null), timeoutMs);
+    window.BX24?.init(() => {
+      window.clearTimeout(timer);
+      window.BX24?.fitWindow();
+      resolve(window.BX24?.getAuth() || null);
     });
-  } catch {
-    // BX24 SDK not available (direct access)
-  }
-
-  return { domain, memberId };
-}
-
-/**
- * Derive a human-friendly company name from a Bitrix24 portal domain.
- * e.g. "dratende.bitrix24.com.br" → "Dratende"
- *      "acme-corp.bitrix24.com"   → "Acme Corp"
- */
-export function companyNameFromDomain(domain: string): string {
-  // Extract subdomain before .bitrix24
-  const sub = domain.replace(/\.bitrix24\..+$/i, '').trim();
-  if (!sub || sub === domain) return domain;
-
-  // Replace separators with spaces
-  const spaced = sub.replace(/[-_]/g, ' ');
-
-  // Title case
-  return spaced
-    .split(/\s+/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
+  });
 }

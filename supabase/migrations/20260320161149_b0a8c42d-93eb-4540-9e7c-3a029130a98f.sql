@@ -1,2 +1,0 @@
-UPDATE public.bitrix_credentials SET bitrix_domain = 'dratende.bitrix24.com.br' WHERE company_id = 'cca4cf26-7a51-46a1-83f0-8b2b319f35d9' AND bitrix_domain = 'dratende.bitrix24.com';
-UPDATE public.bitrix_installations SET domain = 'dratende.bitrix24.com.br' WHERE company_id = 'cca4cf26-7a51-46a1-83f0-8b2b319f35d9' AND domain = 'dratende.bitrix24.com';
